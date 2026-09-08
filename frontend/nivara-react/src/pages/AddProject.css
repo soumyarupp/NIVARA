@@ -76,12 +76,9 @@ button, input, select, textarea {
 
 .logo-badge {
   height: 42px;
-  background: #ffffff;
-  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 10px;
   flex-shrink: 0;
 }
 

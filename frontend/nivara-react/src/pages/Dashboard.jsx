@@ -113,7 +113,7 @@ const Dashboard = () => {
         </div>
 
         <nav className="header-nav">
-          <Link to="/" className="nav-link active">Home</Link>
+          <Link to="/" className="nav-link">Home</Link>
           <a href="#projects-attention" className="nav-link">Projects</a>
           <a href="#project-dashboard" className="nav-link">Dashboard</a>
           <a href="#ai-features" className="nav-link">Risk Intelligence</a>
