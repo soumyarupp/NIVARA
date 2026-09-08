@@ -14,6 +14,7 @@ import MismatchDetectorModal from '../components/MismatchDetectorModal';
 import PreApprovalSimulatorModal from '../components/PreApprovalSimulatorModal';
 import WhatIfSimulatorModal from '../components/WhatIfSimulatorModal';
 import ReportsView from '../components/ReportsView';
+import ProjectDashboard from '../components/ProjectDashboard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -98,7 +99,7 @@ const Dashboard = () => {
   };
 
   return (
-    <>
+    <div className="dashboard-page-wrapper">
       {/* ===== Header Navigation (Task 7) ===== */}
       <header className="site-header">
         <div className="header-left">
@@ -114,7 +115,7 @@ const Dashboard = () => {
         <nav className="header-nav">
           <Link to="/" className="nav-link active">Home</Link>
           <a href="#projects-attention" className="nav-link">Projects</a>
-          <Link to="/" className="nav-link">Dashboard</Link>
+          <a href="#project-dashboard" className="nav-link">Dashboard</a>
           <a href="#ai-features" className="nav-link">Risk Intelligence</a>
           <Link to="/reports" className="nav-link">Reports</Link>
         </nav>
@@ -326,6 +327,9 @@ const Dashboard = () => {
             </div>
           </div>
         </section>
+
+        {/* ===== PROJECT DASHBOARD ===== */}
+        <ProjectDashboard projects={attentionProjects} onInspect={() => setActiveModal('reports')} />
 
         {/* ===== TASK 4: THE SIX ACTUAL NIVARA AI FEATURES ===== */}
         <section className="dashboard-section" id="ai-features">
@@ -647,7 +651,7 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

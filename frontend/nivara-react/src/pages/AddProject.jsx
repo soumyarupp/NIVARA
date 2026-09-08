@@ -807,7 +807,7 @@ const AddProject = () => {
   }, []);
 
   return (
-    <>
+    <div className="add-project-page-root">
       {/* ===== Site Header ===== */}
   <header className="site-header">
     <div className="header-left">
@@ -1938,7 +1938,7 @@ const AddProject = () => {
     </svg>
     <span id="toast-message">Notification message</span>
   </div>
-    </>
+    </div>
   );
 };
 

@@ -6,7 +6,6 @@ const CAPTCHA_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   const [captchaCode, setCaptchaCode] = useState('');
   const [captchaTilts, setCaptchaTilts] = useState([]);
   const [captchaInputVal, setCaptchaInputVal] = useState('');
@@ -17,11 +16,6 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCaptchaSpinning, setIsCaptchaSpinning] = useState(false);
   const [language, setLanguage] = useState('EN');
-
-  // Register Form State
-  const [regAgency, setRegAgency] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPassword, setRegPassword] = useState('');
 
   const generateCaptcha = useCallback(() => {
     let code = "";
@@ -78,15 +72,6 @@ const Login = () => {
     }, 1200);
   };
 
-  const handleRegisterSubmit = (e) => {
-    e.preventDefault();
-    setAuthAlert({ message: "Registration submitted! Verification link dispatched to your official email.", isError: false });
-    setTimeout(() => {
-      setActiveTab('login');
-      setAuthAlert(null);
-    }, 2000);
-  };
-
   const handleForgotPassword = (e) => {
     e.preventDefault();
     if (username.trim()) {
@@ -97,7 +82,7 @@ const Login = () => {
   };
 
   return (
-    <>
+    <div className="login-page-root">
       {/* ================= TOP NAVBAR ================= */}
       <header className="top-nav">
         <div className="nav-left">
@@ -261,29 +246,6 @@ const Login = () => {
               <div className="card-header">
                 <h2 className="card-title">Access Workspace</h2>
                 <p className="card-subtitle">Sign in to manage projects and stream predictive analytics</p>
-
-                <div className="tabs-wrapper">
-                  <div className="tabs-track">
-                    <button
-                      type="button"
-                      className={`tab-btn ${activeTab === 'login' ? 'active' : ''}`}
-                      onClick={() => { setActiveTab('login'); setAuthAlert(null); }}
-                    >
-                      <span>Sign In</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`tab-btn ${activeTab === 'register' ? 'active' : ''}`}
-                      onClick={() => { setActiveTab('register'); setAuthAlert(null); }}
-                    >
-                      <span>Register</span>
-                    </button>
-                    <div
-                      className="tab-indicator"
-                      style={{ transform: activeTab === 'login' ? 'translateX(0%)' : 'translateX(100%)' }}
-                    ></div>
-                  </div>
-                </div>
               </div>
 
               {/* Alert / Toast Message */}
@@ -294,228 +256,160 @@ const Login = () => {
               )}
 
               {/* SIGN IN FORM */}
-              {activeTab === 'login' && (
-                <form className="auth-form active" onSubmit={handleLoginSubmit}>
+              <form className="auth-form active" onSubmit={handleLoginSubmit}>
 
-                  {/* Username Field */}
-                  <div className="form-group">
-                    <label htmlFor="username" className="form-label">
-                      Username or Official Email <span className="req">*</span>
-                    </label>
-                    <div className="input-wrapper">
-                      <span className="input-icon">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                          <circle cx="12" cy="7" r="4" />
-                        </svg>
-                      </span>
-                      <input
-                        type="text"
-                        id="username"
-                        className="form-input"
-                        placeholder="name@agency.org or username"
-                        autoComplete="username"
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Password Field */}
-                  <div className="form-group">
-                    <div className="label-row">
-                      <label htmlFor="password" className="form-label">
-                        Password <span className="req">*</span>
-                      </label>
-                      <a href="#" className="forgot-link" onClick={handleForgotPassword}>Forgot Password?</a>
-                    </div>
-                    <div className="input-wrapper">
-                      <span className="input-icon">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                      </span>
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        id="password"
-                        className="form-input has-action"
-                        placeholder="Enter your secure password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="action-btn"
-                        onClick={() => setShowPassword(v => !v)}
-                        title={showPassword ? "Hide password" : "Show password"}
-                      >
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          {showPassword ? (
-                            <>
-                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                              <line x1="1" y1="1" x2="23" y2="23"></line>
-                            </>
-                          ) : (
-                            <>
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </>
-                          )}
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* CAPTCHA / Verification Code */}
-                  <div className="form-group">
-                    <label htmlFor="captcha-input" className="form-label">
-                      Verification Code <span className="req">*</span>
-                    </label>
-
-                    <div className="captcha-card">
-                      <div className="captcha-preview" title="Security Verification Code">
-                        <div className="captcha-noise"></div>
-                        {captchaCode.split('').map((char, i) => (
-                          <span
-                            key={i}
-                            className={`captcha-char char-${i + 1}`}
-                            style={{
-                              transform: captchaTilts[i]
-                                ? `rotate(${captchaTilts[i].tilt}deg) translateY(${captchaTilts[i].y}px)`
-                                : 'none'
-                            }}
-                          >
-                            {char}
-                          </span>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        className={`captcha-reload-btn ${isCaptchaSpinning ? 'spinning' : ''}`}
-                        onClick={handleReloadCaptcha}
-                        title="Regenerate Verification Code"
-                      >
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                        </svg>
-                      </button>
-                    </div>
-
-                    <div className="input-wrapper">
-                      <span className="input-icon">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="9 11 12 14 22 4" />
-                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                        </svg>
-                      </span>
-                      <input
-                        type="text"
-                        id="captcha-input"
-                        className="form-input captcha-type"
-                        placeholder="Enter 6-character code"
-                        maxLength="6"
-                        autoComplete="off"
-                        value={captchaInputVal}
-                        onChange={e => setCaptchaInputVal(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Primary Button */}
-                  <button type="submit" className="btn-primary-cta" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <span className="btn-text">Signing in...</span>
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" className="spinning" style={{ animation: 'spin 0.8s linear infinite' }}>
-                          <circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle>
-                          <path d="M12 2a10 10 0 0 1 10 10"></path>
-                        </svg>
-                      </>
-                    ) : (
-                      <>
-                        <span className="btn-text">Sign In</span>
-                        <span className="btn-icon">
-                          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                          </svg>
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-
-              {/* REGISTER FORM */}
-              {activeTab === 'register' && (
-                <form className="auth-form active" onSubmit={handleRegisterSubmit}>
-                  <div className="form-group">
-                    <label htmlFor="reg-agency" className="form-label">Implementing Agency / Organization <span className="req">*</span></label>
-                    <div className="input-wrapper">
-                      <span className="input-icon">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M3 7v14M21 7v14M6 11h4M6 15h4M14 11h4M14 15h4M9 3l6 4H9z"/></svg>
-                      </span>
-                      <input
-                        type="text"
-                        id="reg-agency"
-                        className="form-input"
-                        placeholder="e.g., National Highways, Metro Rail"
-                        value={regAgency}
-                        onChange={e => setRegAgency(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="reg-email" className="form-label">Official Work Email <span className="req">*</span></label>
-                    <div className="input-wrapper">
-                      <span className="input-icon">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                      </span>
-                      <input
-                        type="email"
-                        id="reg-email"
-                        className="form-input"
-                        placeholder="officer@agency.org"
-                        value={regEmail}
-                        onChange={e => setRegEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="reg-password" className="form-label">Create Password <span className="req">*</span></label>
-                    <div className="input-wrapper">
-                      <span className="input-icon">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      </span>
-                      <input
-                        type="password"
-                        id="reg-password"
-                        className="form-input"
-                        placeholder="Minimum 8 characters"
-                        value={regPassword}
-                        onChange={e => setRegPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <button type="submit" className="btn-primary-cta">
-                    <span className="btn-text">Create Account</span>
-                    <span className="btn-icon">
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                {/* Username Field */}
+                <div className="form-group">
+                  <label htmlFor="username" className="form-label">
+                    Username or Official Email <span className="req">*</span>
+                  </label>
+                  <div className="input-wrapper">
+                    <span className="input-icon">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
                     </span>
-                  </button>
-                </form>
-              )}
+                    <input
+                      type="text"
+                      id="username"
+                      className="form-input"
+                      placeholder="name@agency.org or username"
+                      autoComplete="username"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password Field */}
+                <div className="form-group">
+                  <div className="label-row">
+                    <label htmlFor="password" className="form-label">
+                      Password <span className="req">*</span>
+                    </label>
+                    <a href="#" className="forgot-link" onClick={handleForgotPassword}>Forgot Password?</a>
+                  </div>
+                  <div className="input-wrapper">
+                    <span className="input-icon">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </span>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      className="form-input has-action"
+                      placeholder="Enter your secure password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="action-btn"
+                      onClick={() => setShowPassword(v => !v)}
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        {showPassword ? (
+                          <>
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                          </>
+                        ) : (
+                          <>
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </>
+                        )}
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* CAPTCHA / Verification Code */}
+                <div className="form-group">
+                  <label htmlFor="captcha-input" className="form-label">
+                    Verification Code <span className="req">*</span>
+                  </label>
+
+                  <div className="captcha-card">
+                    <div className="captcha-preview" title="Security Verification Code">
+                      <div className="captcha-noise"></div>
+                      {captchaCode.split('').map((char, i) => (
+                        <span
+                          key={i}
+                          className={`captcha-char char-${i + 1}`}
+                          style={{
+                            transform: captchaTilts[i]
+                              ? `rotate(${captchaTilts[i].tilt}deg) translateY(${captchaTilts[i].y}px)`
+                              : 'none'
+                          }}
+                        >
+                          {char}
+                        </span>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className={`captcha-reload-btn ${isCaptchaSpinning ? 'spinning' : ''}`}
+                      onClick={handleReloadCaptcha}
+                      title="Regenerate Verification Code"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="input-wrapper">
+                    <span className="input-icon">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                      </svg>
+                    </span>
+                    <input
+                      type="text"
+                      id="captcha-input"
+                      className="form-input captcha-type"
+                      placeholder="Enter 6-character code"
+                      maxLength="6"
+                      autoComplete="off"
+                      value={captchaInputVal}
+                      onChange={e => setCaptchaInputVal(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Primary Button */}
+                <button type="submit" className="btn-primary-cta" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <span className="btn-text">Signing in...</span>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" className="spinning" style={{ animation: 'spin 0.8s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle>
+                        <path d="M12 2a10 10 0 0 1 10 10"></path>
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      <span className="btn-text">Sign In</span>
+                      <span className="btn-icon">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                      </span>
+                    </>
+                  )}
+                </button>
+              </form>
 
               {/* Security Badges Footer */}
               <div className="card-security-footer">
@@ -537,7 +431,7 @@ const Login = () => {
         </section>
 
       </main>
-    </>
+    </div>
   );
 };
 

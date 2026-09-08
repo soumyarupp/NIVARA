@@ -10,7 +10,7 @@ import apiClient, { isMockMode } from './apiClient';
 import { mockProjectsList, filterMockProjects } from '../mock/projects';
 
 const ProjectAPI = {
-  
+
   STORAGE_KEY_DRAFT: "nivara_project_form_draft_v1",
   STORAGE_KEY_SUBMITTED: "nivara_submitted_projects_v1",
 
@@ -140,7 +140,7 @@ const ProjectAPI = {
   clearDraft() {
     try {
       localStorage.removeItem(this.STORAGE_KEY_DRAFT);
-    } catch (e) {}
+    } catch (e) { }
   },
 
   async submitProject(formData) {

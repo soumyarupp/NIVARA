@@ -35,7 +35,7 @@
   box-sizing: border-box;
 }
 
-body {
+.add-project-page-root {
   font-family: var(--font-main);
   background-color: var(--color-bg);
   color: var(--color-text-main);
