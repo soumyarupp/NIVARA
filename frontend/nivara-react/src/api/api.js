@@ -54,3 +54,9 @@ const NivaraAPI = {
     ];
   }
 };
+
+if (typeof window !== "undefined") {
+  window.NivaraAPI = NivaraAPI;
+}
+
+export default NivaraAPI;

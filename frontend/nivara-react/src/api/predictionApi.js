@@ -364,7 +364,7 @@ if (typeof window !== "undefined") {
   window.PredictionAPI = PredictionAPI;
 }
 
-// Support CommonJS/module export if running in node/bundler
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = PredictionAPI;
-}
+
+export default PredictionAPI;
+
+

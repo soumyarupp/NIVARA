@@ -821,9 +821,9 @@ const AddProject = () => {
     </div>
 
     <nav className="header-nav">
-      <a href="index.html" className="nav-link">Home</a>
-      <a href="reports.html" className="nav-link">Reports</a>
-      <a href="index.html" className="nav-link">Dashboard</a>
+      <Link to="/" className="nav-link">Home</Link>
+      <Link to="/reports" className="nav-link">Reports</Link>
+      <Link to="/" className="nav-link">Dashboard</Link>
     </nav>
 
     <div className="header-right">
@@ -837,9 +837,11 @@ const AddProject = () => {
         </svg>
         Save Draft
       </button>
-      <a href="index.html" className="btn btn-reports" style={{backgroundColor: 'var(--color-purple)', color: '#ffffff'}}>Exit
-        Form</a>
+      <Link to="/" className="btn btn-reports" style={{backgroundColor: 'var(--color-purple)', color: '#ffffff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center'}}>
+        Exit Form
+      </Link>
     </div>
+
   </header>
 
   {/* ===== Main Form Page ===== */}

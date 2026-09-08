@@ -172,3 +172,6 @@ const ProjectAPI = {
 if (typeof window !== "undefined") {
   window.ProjectAPI = ProjectAPI;
 }
+
+export default ProjectAPI;
+
