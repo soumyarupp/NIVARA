@@ -30,6 +30,7 @@ const ReportsUI = (function () {
   async function init() {
     bindEvents();
     await loadProjects();
+    showListView();
   }
 
   /**
