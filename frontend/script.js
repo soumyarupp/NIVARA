@@ -74,4 +74,15 @@ document.addEventListener("DOMContentLoaded", () => {
   renderStats();
   renderFeatures();
   setupFontControls();
+
+  // Navigation to Login / Add Project portal
+  const btnAdd = document.querySelector(".btn-add");
+  if (btnAdd) {
+    btnAdd.addEventListener("click", (e) => {
+      if (btnAdd.tagName === "BUTTON") {
+        e.preventDefault();
+        window.location.href = "login.html";
+      }
+    });
+  }
 });
