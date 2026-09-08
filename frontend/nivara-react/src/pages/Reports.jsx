@@ -351,7 +351,7 @@ const ReportsUI = (function () {
 
     if (delaySubtext) {
       delaySubtext.innerHTML = `
-        Planned Completion: <strong>${project.plannedCompletion}</strong><br />
+        Planned Completion: <strong>${project.plannedCompletion}</strong><br>
         Predicted Slippage: <strong>+${pred.predictedDelayMonths.toFixed(1)} months</strong> timeline deviation.
       `;
     }
@@ -465,31 +465,31 @@ const ReportsUI = (function () {
           </linearGradient>
         </defs>
 
-        {/* Y Axis Grid Lines */}
+        <!-- Y Axis Grid Lines -->
         <line x1="${padding.left}" y1="${padding.top}" x2="${width - padding.right}" y2="${padding.top}" stroke="#f1f5f9" stroke-dasharray="3 3"/>
         <line x1="${padding.left}" y1="${padding.top + chartH / 2}" x2="${width - padding.right}" y2="${padding.top + chartH / 2}" stroke="#f1f5f9" stroke-dasharray="3 3"/>
         <line x1="${padding.left}" y1="${padding.top + chartH}" x2="${width - padding.right}" y2="${padding.top + chartH}" stroke="#cbd5e1"/>
 
-        {/* Y Labels */}
+        <!-- Y Labels -->
         <text x="${padding.left - 8}" y="${padding.top + 4}" fill="#94a3b8" font-size="9" text-anchor="end">100</text>
         <text x="${padding.left - 8}" y="${padding.top + chartH / 2 + 3}" fill="#94a3b8" font-size="9" text-anchor="end">50</text>
         <text x="${padding.left - 8}" y="${padding.top + chartH + 3}" fill="#94a3b8" font-size="9" text-anchor="end">0</text>
 
-        {/* Area Fill */}
+        <!-- Area Fill -->
         <path d="${areaD}" fill="url(#trendAreaGrad)" />
 
-        {/* Line Curve */}
+        <!-- Line Curve -->
         <path d="${pathD}" fill="none" stroke="url(#trendLineGrad)" stroke-width="3" stroke-linecap="round" />
 
-        {/* Plotted Data Circles & Month Labels */}
+        <!-- Plotted Data Circles & Month Labels -->
         ${points.map((pt, idx) => `
           <g>
             <circle cx="${pt.x}" cy="${pt.y}" r="4" fill="#0284c7" stroke="#ffffff" stroke-width="2">
               <title>${pt.month}: Risk Score ${pt.score}/100</title>
-            
-            {/* Score Bubble on point */}
+            </circle>
+            <!-- Score Bubble on point -->
             <text x="${pt.x}" y="${pt.y - 8}" fill="#0f172a" font-size="10" font-weight="700" text-anchor="middle">${pt.score}</text>
-            {/* Month Label on X axis */}
+            <!-- Month Label on X axis -->
             <text x="${pt.x}" y="${padding.top + chartH + 16}" fill="#64748b" font-size="9.5" text-anchor="middle">${pt.month.slice(5)}</text>
           </g>
         `).join("")}

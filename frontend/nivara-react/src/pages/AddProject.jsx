@@ -59,7 +59,7 @@ const AddProject = () => {
         // Checkmark icon for completed steps
         circle.innerHTML = `
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12">
+            <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         `;
       } else {
@@ -260,9 +260,9 @@ const AddProject = () => {
     row.className = "dynamic-row";
     row.id = rowId;
     row.innerHTML = `
-      <input type="text" class="form-input row-desc" placeholder="Component Description (e.g. Utility Shifting)" value="${desc}" />
-      <input type="number" class="form-input row-target" placeholder="Target (₹ Cr)" step="0.01" value="${target}" />
-      <input type="number" class="form-input row-actual" placeholder="Actual (₹ Cr)" step="0.01" value="${actual}" />
+      <input type="text" class="form-input row-desc" placeholder="Component Description (e.g. Utility Shifting)" value="${desc}">
+      <input type="number" class="form-input row-target" placeholder="Target (₹ Cr)" step="0.01" value="${target}">
+      <input type="number" class="form-input row-actual" placeholder="Actual (₹ Cr)" step="0.01" value="${actual}">
       <button type="button" class="btn-remove-row" title="Remove Component">&times;</button>
     `;
 
@@ -291,8 +291,8 @@ const AddProject = () => {
     row.style.gridTemplateColumns = "2fr 1fr 40px";
     row.id = rowId;
     row.innerHTML = `
-      <input type="text" class="form-input partner-name" placeholder="Co-Funding Partner / Agency" value="${name}" />
-      <input type="number" class="form-input partner-amt funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01" value="${amt}" />
+      <input type="text" class="form-input partner-name" placeholder="Co-Funding Partner / Agency" value="${name}">
+      <input type="number" class="form-input partner-amt funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01" value="${amt}">
       <button type="button" class="btn-remove-row" title="Remove Partner">&times;</button>
     `;
 
@@ -461,7 +461,7 @@ const AddProject = () => {
       <div class="form-grid">
         <div class="form-field">
           <label class="form-label">Tender Identification / NIT No.</label>
-          <input type="text" class="form-input tender-nit" placeholder="e.g. NHAI/HQ/2026/PKG-04" value="${tenderId}" />
+          <input type="text" class="form-input tender-nit" placeholder="e.g. NHAI/HQ/2026/PKG-04" value="${tenderId}">
         </div>
         <div class="form-field">
           <label class="form-label">Procurement Model</label>
@@ -474,11 +474,11 @@ const AddProject = () => {
         </div>
         <div class="form-field">
           <label class="form-label">e-Procurement Portal URL</label>
-          <input type="url" class="form-input tender-link" placeholder="https://eprocure.gov.in/..." value="${link}" />
+          <input type="url" class="form-input tender-link" placeholder="https://eprocure.gov.in/..." value="${link}">
         </div>
         <div class="form-field">
           <label class="form-label">Bid Submission Due Date</label>
-          <input type="date" class="form-input tender-date" value="${date}" />
+          <input type="date" class="form-input tender-date" value="${date}">
         </div>
       </div>
     `;

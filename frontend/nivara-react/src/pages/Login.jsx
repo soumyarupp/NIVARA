@@ -105,15 +105,15 @@ const Login = () => {
       if (isPassword) {
         // Eye Off SVG
         eyeIcon.innerHTML = `
-          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
-          <line x1="1" y1="1" x2="23" y2="23">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+          <line x1="1" y1="1" x2="23" y2="23"></line>
         `;
         togglePasswordBtn.title = "Hide password";
       } else {
         // Eye SVG
         eyeIcon.innerHTML = `
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z">
-          <circle cx="12" cy="12" r="3">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
         `;
         togglePasswordBtn.title = "Show password";
       }
@@ -168,8 +168,8 @@ const Login = () => {
         submitBtn.innerHTML = `
           <span class="btn-text">Signing in...</span>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" class="spinning" style="animation: spin 0.8s linear infinite;">
-            <circle cx="12" cy="12" r="10" stroke-opacity="0.25">
-            <path d="M12 2a10 10 0 0 1 10 10">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10"></path>
           </svg>
         `;
       }
@@ -315,14 +315,14 @@ const Login = () => {
           {/* SVG Predictive Graph Line & Connected Nodes */}
           <svg className="predictive-chart-svg" viewBox="0 0 540 180" fill="none">
             <defs>
-              <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%" />
-                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.35"/>
-                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.0"/>
+              <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.35"/>
+                <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.0"/>
               </linearGradient>
-              <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%" />
-                <stop offset="0%" stop-color="#0ea5e9"/>
-                <stop offset="50%" stop-color="#14b8a6"/>
-                <stop offset="100%" stop-color="#38bdf8"/>
+              <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#0ea5e9"/>
+                <stop offset="50%" stopColor="#14b8a6"/>
+                <stop offset="100%" stopColor="#38bdf8"/>
               </linearGradient>
               <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="3" result="blur"/>

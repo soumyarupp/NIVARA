@@ -13,16 +13,27 @@ function convertHtmlToJsx(html) {
     jsx = jsx.replace(/stroke-opacity/g, 'strokeOpacity');
     jsx = jsx.replace(/fill-rule/g, 'fillRule');
     jsx = jsx.replace(/clip-rule/g, 'clipRule');
+    jsx = jsx.replace(/stop-color/g, 'stopColor');
+    jsx = jsx.replace(/stop-opacity/g, 'stopOpacity');
+    jsx = jsx.replace(/<br>/gi, '<br />');
+    jsx = jsx.replace(/<hr>/gi, '<hr />');
     
-    // self close tags
+    // self close tags safely
     const tags = ['img', 'input', 'circle', 'line', 'path', 'rect', 'polyline', 'stop', 'feGaussianBlur', 'feMergeNode'];
     tags.forEach(tag => {
-        const regex = new RegExp(`(<${tag}[^>]+)(?<!/)>`, 'gi');
+        const regex = new RegExp(`(<${tag}\\b[^>]+?)(?<!/)>`, 'gi');
         jsx = jsx.replace(regex, '$1 />');
     });
 
-    // Remove inline style tags or attributes if they're causing issues, but let's try to fix style strings
-    // style="animation: spin 0.8s linear infinite;" -> style={{animation: 'spin 0.8s linear infinite'}}
+    // Remove old closing tags for elements that we self-closed
+    tags.forEach(tag => {
+        const regex = new RegExp(`</${tag}>`, 'gi');
+        jsx = jsx.replace(regex, '');
+    });
+
+    // Replace HTML comments with JSX comments
+    jsx = jsx.replace(/<!--([\s\S]*?)-->/g, '{/*$1*/}');
+
     jsx = jsx.replace(/style="([^"]+)"/g, (match, p1) => {
         const rules = p1.split(';').filter(r => r.trim());
         let styleObj = {};
@@ -53,17 +64,14 @@ const files = [
 
 files.forEach(file => {
     const html = fs.readFileSync(file.html, 'utf-8');
-    const jsx = convertHtmlToJsx(html);
+    let jsx = convertHtmlToJsx(html);
     
     // Read the js file content to embed it inside useEffect
     let jsContent = '';
     if (fs.existsSync(file.js)) {
         jsContent = fs.readFileSync(file.js, 'utf-8');
-        // comment out DOMContentLoaded since we are in React
         jsContent = jsContent.replace(/document\.addEventListener\("DOMContentLoaded", \(\) => {/g, '// document.addEventListener("DOMContentLoaded", () => {');
         jsContent = jsContent.replace(/}\);[\s]*$/g, '// });\n');
-        
-        // Remove or fix location.href stuff
         jsContent = jsContent.replace(/window\.location\.href\s*=\s*["']([^"']+)["']/g, '/* window.location.href = "$1" */');
     }
 
@@ -87,11 +95,6 @@ export default ${file.name};
 `;
 
     fs.writeFileSync(file.out, component, 'utf-8');
-    
-    if (fs.existsSync(file.css)) {
-        const css = fs.readFileSync(file.css, 'utf-8');
-        fs.writeFileSync(`src/pages/${file.name}.css`, css, 'utf-8');
-    }
 });
 
 console.log("Conversion complete.");
