@@ -30,15 +30,18 @@
     </nav>
 
     <div class="header-right">
-      <button type="button" class="btn-header-action btn-draft-top" id="btn-save-draft-top" title="Save current progress as draft">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button type="button" class="btn-header-action btn-draft-top" id="btn-save-draft-top"
+        title="Save current progress as draft">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
           <polyline points="17 21 17 13 7 13 7 21"></polyline>
           <polyline points="7 3 7 8 15 8"></polyline>
         </svg>
         Save Draft
       </button>
-      <a href="index.html" class="btn btn-reports" style="background-color: var(--color-purple); color: #ffffff;">Exit Form</a>
+      <a href="index.html" class="btn btn-reports" style="background-color: var(--color-purple); color: #ffffff;">Exit
+        Form</a>
     </div>
   </header>
 
@@ -105,7 +108,8 @@
         <!-- Project Name -->
         <div class="form-field form-grid-full">
           <label for="p-name" class="form-label">Official Project Title <span class="req">*</span></label>
-          <input type="text" id="p-name" class="form-input" placeholder="e.g. Construction of 6-Lane Access-Controlled Highway Corridor..." required>
+          <input type="text" id="p-name" class="form-input"
+            placeholder="e.g. Construction of 6-Lane Access-Controlled Highway Corridor..." required>
           <span class="form-hint">Enter sanctioned project name as per the administrative approval order.</span>
           <span class="form-error-msg">Project title is mandatory.</span>
         </div>
@@ -143,7 +147,8 @@
         <!-- National Scheme / Mission -->
         <div class="form-field">
           <label for="p-scheme" class="form-label">Associated Scheme / Flagship Mission (If any)</label>
-          <input type="text" id="p-scheme" class="form-input" placeholder="e.g. PM Gati Shakti National Master Plan, Bharatmala Pariyojana, Sagarmala">
+          <input type="text" id="p-scheme" class="form-input"
+            placeholder="e.g. PM Gati Shakti National Master Plan, Bharatmala Pariyojana, Sagarmala">
         </div>
 
         <!-- Project Classification (Greenfield / Brownfield) -->
@@ -225,17 +230,21 @@
 
         <!-- Timeline Dates -->
         <div class="form-field">
-          <label for="p-approval-date" class="form-label">Administrative Sanction Date <span class="req">*</span></label>
+          <label for="p-approval-date" class="form-label">Administrative Sanction Date <span
+              class="req">*</span></label>
           <input type="date" id="p-approval-date" class="form-input" required>
         </div>
 
         <div class="form-field">
-          <label for="p-duration-months" class="form-label">Sanctioned Duration (Months) <span class="req">*</span></label>
-          <input type="number" id="p-duration-months" class="form-input" placeholder="e.g. 36" min="1" max="240" required>
+          <label for="p-duration-months" class="form-label">Sanctioned Duration (Months) <span
+              class="req">*</span></label>
+          <input type="number" id="p-duration-months" class="form-input" placeholder="e.g. 36" min="1" max="240"
+            required>
         </div>
 
         <div class="form-field">
-          <label for="p-start-date" class="form-label">Project Start Date / Appointed Date <span class="req">*</span></label>
+          <label for="p-start-date" class="form-label">Project Start Date / Appointed Date <span
+              class="req">*</span></label>
           <input type="date" id="p-start-date" class="form-input" required>
         </div>
 
@@ -257,8 +266,10 @@
       <div class="form-grid">
         <!-- Total Sanctioned Cost -->
         <div class="form-field">
-          <label for="p-total-cost" class="form-label">Total Sanctioned Project Outlay (₹ Crore) <span class="req">*</span></label>
-          <input type="number" id="p-total-cost" class="form-input" placeholder="e.g. 12450.00" step="0.01" min="0" required>
+          <label for="p-total-cost" class="form-label">Total Sanctioned Project Outlay (₹ Crore) <span
+              class="req">*</span></label>
+          <input type="number" id="p-total-cost" class="form-input" placeholder="e.g. 12450.00" step="0.01" min="0"
+            required>
           <span class="form-hint">Approved capital expenditure in INR Crores.</span>
           <span class="form-error-msg">Total project cost is required.</span>
         </div>
@@ -281,7 +292,8 @@
         <div class="toggle-wrapper">
           <div class="toggle-info">
             <span class="toggle-title">Does Total Cost include Land Acquisition Outlay?</span>
-            <span class="toggle-desc">Toggle on if compensation and land rehabilitation costs are factored into the sanctioned estimate.</span>
+            <span class="toggle-desc">Toggle on if compensation and land rehabilitation costs are factored into the
+              sanctioned estimate.</span>
           </div>
           <label class="switch">
             <input type="checkbox" id="toggle-land-cost">
@@ -302,7 +314,8 @@
         <div class="toggle-wrapper">
           <div class="toggle-info">
             <span class="toggle-title">Any Additional Cost Breakdown Components?</span>
-            <span class="toggle-desc">Itemize special allocations such as utility shifting, environmental mitigation, or consultancy fees.</span>
+            <span class="toggle-desc">Itemize special allocations such as utility shifting, environmental mitigation, or
+              consultancy fees.</span>
           </div>
           <label class="switch">
             <input type="checkbox" id="toggle-additional-costs">
@@ -315,7 +328,9 @@
             <!-- Dynamic rows injected here -->
           </div>
           <button type="button" class="btn-add-row" id="btn-add-cost-row">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Add Additional Cost Component
           </button>
         </div>
@@ -324,7 +339,8 @@
       <!-- Funding Source Breakdown Grouped Cards -->
       <div style="margin-top: 30px;">
         <h3 style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">Funding Source Breakdown</h3>
-        <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 16px;">Specify exact financial allocations (₹ Cr). Values auto-reconcile in real time.</p>
+        <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 16px;">Specify exact financial
+          allocations (₹ Cr). Values auto-reconcile in real time.</p>
 
         <div class="funding-source-cards-grid">
           <!-- Central Support -->
@@ -333,7 +349,8 @@
               <span>Central Government Budgetary Support</span>
               <span style="font-size: 11px; color: #0284c7; font-weight: 700;">Grant / Equity</span>
             </div>
-            <input type="number" id="p-fund-central" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01">
+            <input type="number" id="p-fund-central" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)"
+              step="0.01">
           </div>
 
           <!-- State Support -->
@@ -342,7 +359,8 @@
               <span>State Government Contribution</span>
               <span style="font-size: 11px; color: #0d9488; font-weight: 700;">State Share</span>
             </div>
-            <input type="number" id="p-fund-state" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01">
+            <input type="number" id="p-fund-state" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)"
+              step="0.01">
           </div>
 
           <!-- Debt / Loans -->
@@ -351,7 +369,8 @@
               <span>Debt / Borrowings / Commercial Loans</span>
               <span style="font-size: 11px; color: #6b4ee6; font-weight: 700;">PFC / REC / Banks</span>
             </div>
-            <input type="number" id="p-fund-debt" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01">
+            <input type="number" id="p-fund-debt" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)"
+              step="0.01">
           </div>
 
           <!-- Internal Accruals -->
@@ -360,7 +379,8 @@
               <span>Internal Accruals / PSU Reserves</span>
               <span style="font-size: 11px; color: #334155; font-weight: 700;">Agency Funds</span>
             </div>
-            <input type="number" id="p-fund-accruals" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01">
+            <input type="number" id="p-fund-accruals" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)"
+              step="0.01">
           </div>
 
           <!-- External Aid -->
@@ -369,7 +389,8 @@
               <span>External Multilateral / Bilateral Aid</span>
               <span style="font-size: 11px; color: #f59e0b; font-weight: 700;">WB / ADB / JICA</span>
             </div>
-            <input type="number" id="p-fund-external" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01">
+            <input type="number" id="p-fund-external" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)"
+              step="0.01">
           </div>
 
           <!-- Private Equity / PPP -->
@@ -378,7 +399,8 @@
               <span>Private Equity / Concessionaire Share</span>
               <span style="font-size: 11px; color: #0f766e; font-weight: 700;">PPP Investor</span>
             </div>
-            <input type="number" id="p-fund-private" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01">
+            <input type="number" id="p-fund-private" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)"
+              step="0.01">
           </div>
 
           <!-- VGF -->
@@ -387,7 +409,8 @@
               <span>Viability Gap Funding (VGF)</span>
               <span style="font-size: 11px; color: #be123c; font-weight: 700;">DEA Scheme</span>
             </div>
-            <input type="number" id="p-fund-vgf" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)" step="0.01">
+            <input type="number" id="p-fund-vgf" class="form-input funding-amt-input" placeholder="Amount (₹ Cr)"
+              step="0.01">
           </div>
         </div>
 
@@ -397,7 +420,9 @@
             <!-- Dynamic partner rows injected here -->
           </div>
           <button type="button" class="btn-add-row" id="btn-add-partner-row">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Add Other Co-Funding Partner
           </button>
         </div>
@@ -651,12 +676,14 @@
         <div class="quarterly-header-row">
           <div>
             <h3 style="font-size: 16px; font-weight: 800; color: #0f172a;">Quarterly Progress Influx</h3>
-            <p style="font-size: 13px; color: var(--color-text-muted);">Record physical cumulative completion (%) and financial disbursement (₹ Cr).</p>
+            <p style="font-size: 13px; color: var(--color-text-muted);">Record physical cumulative completion (%) and
+              financial disbursement (₹ Cr).</p>
           </div>
           <div class="sparkline-box">
             <span style="font-size: 11.5px; font-weight: 700; color: #64748b;">Trajectory Sparkline:</span>
             <svg class="sparkline-svg" viewBox="0 0 90 24">
-              <polyline id="sparkline-polyline" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="0,20 30,16 60,10 90,4"/>
+              <polyline id="sparkline-polyline" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round" points="0,20 30,16 60,10 90,4" />
             </svg>
           </div>
         </div>
@@ -672,23 +699,31 @@
           <tbody>
             <tr>
               <td><strong>Q1 (Apr – Jun 2026)</strong></td>
-              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 15" min="0" max="100" value="15"></td>
-              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="1250.00"></td>
+              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 15" min="0" max="100"
+                  value="15"></td>
+              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="1250.00">
+              </td>
             </tr>
             <tr>
               <td><strong>Q2 (Jul – Sep 2026)</strong></td>
-              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 28" min="0" max="100" value="28"></td>
-              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="2840.00"></td>
+              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 28" min="0" max="100"
+                  value="28"></td>
+              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="2840.00">
+              </td>
             </tr>
             <tr>
               <td><strong>Q3 (Oct – Dec 2026)</strong></td>
-              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 42" min="0" max="100" value="45"></td>
-              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="4600.00"></td>
+              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 42" min="0" max="100"
+                  value="45"></td>
+              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="4600.00">
+              </td>
             </tr>
             <tr>
               <td><strong>Q4 (Jan – Mar 2027)</strong></td>
-              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 60" min="0" max="100" value="62"></td>
-              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="6900.00"></td>
+              <td><input type="number" class="form-input q-progress-pct" placeholder="e.g. 60" min="0" max="100"
+                  value="62"></td>
+              <td><input type="number" class="form-input" placeholder="Disbursed (₹ Cr)" step="0.01" value="6900.00">
+              </td>
             </tr>
           </tbody>
         </table>
@@ -698,11 +733,15 @@
       <div class="tenders-section">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <h3 style="font-size: 16px; font-weight: 800; color: #0f172a;">Tender Packages &amp; Procurement Notices</h3>
-            <p style="font-size: 13px; color: var(--color-text-muted);">Attach NIT numbers, e-procurement links, and submission dates.</p>
+            <h3 style="font-size: 16px; font-weight: 800; color: #0f172a;">Tender Packages &amp; Procurement Notices
+            </h3>
+            <p style="font-size: 13px; color: var(--color-text-muted);">Attach NIT numbers, e-procurement links, and
+              submission dates.</p>
           </div>
           <button type="button" class="btn-add-row" id="btn-add-tender">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Add Tender Package
           </button>
         </div>
@@ -764,7 +803,8 @@
         <div class="toggle-wrapper">
           <div class="toggle-info">
             <span class="toggle-title">Is Right of Way (RoW) Clearance Applicable?</span>
-            <span class="toggle-desc">Applicable for linear projects such as highways, pipelines, rail corridors, and transmission grids.</span>
+            <span class="toggle-desc">Applicable for linear projects such as highways, pipelines, rail corridors, and
+              transmission grids.</span>
           </div>
           <label class="switch">
             <input type="checkbox" id="toggle-row-applicable">
@@ -785,10 +825,13 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <div>
             <h3 style="font-size: 16px; font-weight: 800; color: #0f172a;">Statutory Clearances Checklist</h3>
-            <p style="font-size: 13px; color: var(--color-text-muted);">Record approvals status across key environmental, coastal, and security regulators.</p>
+            <p style="font-size: 13px; color: var(--color-text-muted);">Record approvals status across key
+              environmental, coastal, and security regulators.</p>
           </div>
           <button type="button" class="btn-add-row" id="btn-add-clearance">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             Add Custom Clearance
           </button>
         </div>
@@ -800,7 +843,8 @@
               <span class="clearance-name">Environmental Clearance (MoEFCC / SEIAA)</span>
             </div>
             <div class="clearance-status-toggle">
-              <button type="button" class="btn-clearance-status active-approved" data-status="approved">Approved</button>
+              <button type="button" class="btn-clearance-status active-approved"
+                data-status="approved">Approved</button>
               <button type="button" class="btn-clearance-status" data-status="pending">Pending</button>
               <button type="button" class="btn-clearance-status" data-status="na">Not Required</button>
             </div>
@@ -847,7 +891,8 @@
       <!-- Project Description Textarea -->
       <div class="form-field" style="margin-top: 30px;">
         <label for="p-description" class="form-label">Project Scope Summary &amp; Key Objectives</label>
-        <textarea id="p-description" class="form-textarea" placeholder="Provide a concise engineering overview of the corridor alignment, civil structures, planned bridges/tunnels, and socio-economic impact..."></textarea>
+        <textarea id="p-description" class="form-textarea"
+          placeholder="Provide a concise engineering overview of the corridor alignment, civil structures, planned bridges/tunnels, and socio-economic impact..."></textarea>
       </div>
 
       <!-- File Upload Zone -->
@@ -856,10 +901,15 @@
         <div class="file-dropzone-card" id="file-dropzone">
           <input type="file" id="p-file-input" multiple accept=".pdf,.kmz,.kml,.geojson,.dwg,.xlsx,.docx">
           <div class="dropzone-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
           </div>
           <div class="dropzone-title">Click to browse or drag and drop files here</div>
-          <div class="dropzone-subtitle">Supported formats: PDF, GeoJSON, KML, CAD (DWG), Excel. Maximum file size: 25 MB per document.</div>
+          <div class="dropzone-subtitle">Supported formats: PDF, GeoJSON, KML, CAD (DWG), Excel. Maximum file size: 25
+            MB per document.</div>
         </div>
         <div class="uploaded-files-list" id="uploaded-files-list">
           <!-- Files list -->
@@ -987,12 +1037,14 @@
 
             <div class="form-field">
               <label for="p-contact-desig" class="form-label">Official Designation <span class="req">*</span></label>
-              <input type="text" id="p-contact-desig" class="form-input" placeholder="e.g. Chief General Manager (Projects) / Project Director" required>
+              <input type="text" id="p-contact-desig" class="form-input"
+                placeholder="e.g. Chief General Manager (Projects) / Project Director" required>
             </div>
 
             <div class="form-field">
               <label for="p-contact-email" class="form-label">Official Email ID <span class="req">*</span></label>
-              <input type="email" id="p-contact-email" class="form-input" placeholder="name@agency.org or officer@gov.in" required>
+              <input type="email" id="p-contact-email" class="form-input"
+                placeholder="name@agency.org or officer@gov.in" required>
             </div>
 
             <div class="form-field">
@@ -1006,7 +1058,9 @@
         <div class="declaration-box">
           <input type="checkbox" id="declaration-check">
           <label for="declaration-check">
-            I hereby declare and confirm that the project particulars, financial estimates, milestone dates, and statutory clearance statuses submitted herein have been authenticated against official administrative sanction orders and are accurate to the best of my knowledge.
+            I hereby declare and confirm that the project particulars, financial estimates, milestone dates, and
+            statutory clearance statuses submitted herein have been authenticated against official administrative
+            sanction orders and are accurate to the best of my knowledge.
           </label>
         </div>
 
@@ -1017,7 +1071,9 @@
     <div class="step-actions-bar">
       <div>
         <button type="button" class="btn-step btn-prev" id="btn-prev-step" style="visibility: hidden;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
           Previous Stage
         </button>
       </div>
@@ -1029,11 +1085,15 @@
 
         <button type="button" class="btn-step btn-next" id="btn-next-step">
           <span>Continue to Next Stage</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
         </button>
 
         <button type="button" class="btn-step btn-submit-final" id="btn-submit-final" style="display: none;" disabled>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           <span>Submit for Review</span>
         </button>
       </div>
@@ -1045,20 +1105,23 @@
   <div class="success-modal-backdrop" id="success-modal">
     <div class="success-modal-card">
       <div class="success-icon-badge">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </div>
 
       <h3 class="success-modal-title">Project Successfully Submitted!</h3>
       <p class="success-modal-sub">
-        Your project details have been successfully ingested into the NIVARA Central Repository of Projects. Initial risk signals and automated timeline forecasting will begin processing.
+        Your project details have been successfully ingested into the NIVARA Central Repository of Projects. Initial
+        risk signals and automated timeline forecasting will begin processing.
       </p>
 
       <div class="project-id-chip-box">
         <span>GENERATED NIVARA PROJECT ID</span>
         <strong id="modal-display-project-id">NIV-2026-PRJ-XXXX</strong>
-        <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Tracking No: <span id="modal-display-tracking-no">TRK-XXXXXXXX</span></div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Tracking No: <span
+            id="modal-display-tracking-no">TRK-XXXXXXXX</span></div>
       </div>
 
       <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
@@ -1070,7 +1133,10 @@
 
   <!-- ================= TOAST NOTIFICATION ================= -->
   <div class="toast-notice" id="toast-notice">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
     <span id="toast-message">Notification message</span>
   </div>
 
