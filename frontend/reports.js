@@ -204,9 +204,10 @@ const ReportsUI = (function () {
    * @param {string|null} [projectId] - Optional project ID to jump directly to prediction view.
    */
   function openModal(projectId = null) {
-    if (!modalBackdrop) return;
-    modalBackdrop.classList.add("active");
-    document.body.style.overflow = "hidden";
+    if (modalBackdrop) {
+      modalBackdrop.classList.add("active");
+      document.body.style.overflow = "hidden";
+    }
 
     if (projectId) {
       loadProjectReport(projectId);
