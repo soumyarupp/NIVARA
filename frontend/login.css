@@ -261,7 +261,7 @@ body {
   flex: 1;
   display: grid;
   grid-template-columns: 55fr 45fr;
-  min-height: calc(100vh - 98px);
+  min-height: calc(100vh - 64px);
   position: relative;
   overflow: hidden;
 }
