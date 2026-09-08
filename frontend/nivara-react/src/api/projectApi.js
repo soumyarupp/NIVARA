@@ -1,20 +1,19 @@
 /**
  * projectApi.js
  * -----------------------------------------------------------------------
- * Project Submission & Draft Storage Layer for NIVARA Platform.
- * Provides simulated persistence for drafts and project submissions.
- * Later can be swapped with real fetch('/api/projects') calls.
+ * Project Management & Submission Service Layer for NIVARA Platform.
+ * Endpoints: GET /api/projects, GET /api/projects/:id, POST /api/projects, PUT /api/projects/:id, DELETE /api/projects/:id
  * -----------------------------------------------------------------------
  */
+
+import apiClient, { isMockMode } from './apiClient';
+import { mockProjectsList, filterMockProjects } from '../mock/projects';
 
 const ProjectAPI = {
   
   STORAGE_KEY_DRAFT: "nivara_project_form_draft_v1",
   STORAGE_KEY_SUBMITTED: "nivara_submitted_projects_v1",
 
-  /**
-   * Sector and Sub-sector mapping for dependent dropdowns
-   */
   getSectorsAndSubsectors() {
     return {
       "Railways": [
@@ -72,13 +71,47 @@ const ProjectAPI = {
     };
   },
 
-  /**
-   * Saves project form draft to local storage
-   * @param {Object} formData
-   * @returns {Promise<{success: boolean, timestamp: string}>}
-   */
+  async getProjects(params = {}) {
+    if (isMockMode()) {
+      await new Promise(r => setTimeout(r, 200));
+      return filterMockProjects(params);
+    }
+    return apiClient.get('/api/projects', params);
+  },
+
+  async getProjectById(id) {
+    if (isMockMode()) {
+      await new Promise(r => setTimeout(r, 150));
+      const project = mockProjectsList.find(p => p.id === id);
+      return { success: !!project, project: project || null };
+    }
+    return apiClient.get(`/api/projects/${id}`);
+  },
+
+  async createProject(formData) {
+    if (isMockMode()) {
+      return this.submitProject(formData);
+    }
+    return apiClient.post('/api/projects', formData);
+  },
+
+  async updateProject(id, formData) {
+    if (isMockMode()) {
+      await new Promise(r => setTimeout(r, 400));
+      return { success: true, message: `Project ${id} updated successfully.` };
+    }
+    return apiClient.put(`/api/projects/${id}`, formData);
+  },
+
+  async deleteProject(id) {
+    if (isMockMode()) {
+      await new Promise(r => setTimeout(r, 300));
+      return { success: true, message: `Project ${id} deleted.` };
+    }
+    return apiClient.delete(`/api/projects/${id}`);
+  },
+
   async saveProjectDraft(formData) {
-    // Simulate async network latency
     await new Promise(resolve => setTimeout(resolve, 350));
     try {
       const payload = {
@@ -93,10 +126,6 @@ const ProjectAPI = {
     }
   },
 
-  /**
-   * Retrieves any existing form draft
-   * @returns {Object|null}
-   */
   getProjectDraft() {
     try {
       const raw = localStorage.getItem(this.STORAGE_KEY_DRAFT);
@@ -108,32 +137,13 @@ const ProjectAPI = {
     }
   },
 
-  /**
-   * Clears saved draft upon successful submission
-   */
   clearDraft() {
     try {
       localStorage.removeItem(this.STORAGE_KEY_DRAFT);
     } catch (e) {}
   },
 
-  /**
-   * Submits project for Ministry/Agency verification
-   * @param {Object} formData
-   * @returns {Promise<{success: boolean, projectId: string, trackingNumber: string, submittedAt: string}>}
-   */
   async submitProject(formData) {
-    // =========================================================================
-    // TODO: Replace mock with real backend API call
-    // Example:
-    // return fetch('/api/projects', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(formData)
-    // }).then(res => res.json());
-    // =========================================================================
-
-    // Simulate backend processing latency
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const year = new Date().getFullYear();
@@ -168,10 +178,8 @@ const ProjectAPI = {
   }
 };
 
-// Global scope
 if (typeof window !== "undefined") {
   window.ProjectAPI = ProjectAPI;
 }
 
 export default ProjectAPI;
-
