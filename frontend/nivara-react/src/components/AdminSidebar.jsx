@@ -49,7 +49,7 @@ const AdminSidebar = ({ isCollapsed, onToggleCollapse }) => {
     <aside className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       {/* Brand Header */}
       <div className="sidebar-brand-header">
-        <Link to="/" className="sidebar-brand-link">
+        <Link to="/dashboard" className="sidebar-brand-link">
           <div className="sidebar-logo-wrapper">
             <img src="NIVARA logo.png" alt="NIVARA Logo" className="sidebar-logo-img" />
           </div>

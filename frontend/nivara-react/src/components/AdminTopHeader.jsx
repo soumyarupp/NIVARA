@@ -36,9 +36,7 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
         </button>
 
         <nav className="admin-breadcrumb">
-          <Link to="/" className="breadcrumb-link"><Home size={14} /> Home</Link>
-          <span className="breadcrumb-sep">/</span>
-          <span className="breadcrumb-link">Workspaces</span>
+          <Link to="/dashboard" className="breadcrumb-link"><Home size={14} /> Dashboard</Link>
           <span className="breadcrumb-sep">/</span>
           <span className="breadcrumb-current">
             {activeKey === '/dashboard' ? 'National Operational Dashboard' : activeKey.replace('/', '')}
@@ -61,10 +59,6 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
 
       {/* Right: Notification Control & Profile Dropdown */}
       <div className="admin-header-right">
-        <Link to="/" className="admin-header-btn" title="View Public Front Page">
-          <ExternalLink size={16} />
-          <span className="hidden sm:inline">Front Page</span>
-        </Link>
 
         {/* Notifications Dropdown */}
         <div className="admin-dropdown-container">

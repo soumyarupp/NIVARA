@@ -1333,6 +1333,7 @@ button {
 .admin-main-container {
   flex: 1;
   margin-left: 240px;
+  padding-top: 64px;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -1343,7 +1344,7 @@ button {
   margin-left: 72px;
 }
 
-/* Sticky Top Header */
+/* Permanent Fixed Top Header */
 .admin-top-header {
   height: 64px;
   background-color: #ffffff;
@@ -1352,10 +1353,17 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  left: 240px;
   z-index: 100;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-app-wrapper.sidebar-collapsed .admin-top-header {
+  left: 72px;
 }
 
 .admin-header-left {

@@ -1,8 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import './AddProject.css';
+import './Dashboard.css';
 import { Link } from 'react-router-dom';
+import AdminSidebar from '../components/AdminSidebar';
+import AdminTopHeader from '../components/AdminTopHeader';
+import Footer from '../components/Footer';
 
 const AddProject = () => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   useEffect(() => {
     /**
  * add-project.js
@@ -807,45 +813,23 @@ const AddProject = () => {
   }, []);
 
   return (
-    <div className="add-project-page-root">
-      {/* ===== Site Header ===== */}
-  <header className="site-header">
-    <div className="header-left">
-      <div className="logo-badge">
-        <img src="NIVARA logo.png" alt="NIVARA Logo" className="logo-img" />
-      </div>
-      <div className="header-titles">
-        <p className="header-eyebrow">Project Monitoring &amp; Governance</p>
-        <p className="header-title">National Infrastructure Vigilance and Risk Analytics</p>
-      </div>
-    </div>
+    <div className={`admin-app-wrapper ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      {/* Persistent Left Sidebar */}
+      <AdminSidebar 
+        isCollapsed={isSidebarCollapsed} 
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+      />
 
-    <nav className="header-nav">
-      <Link to="/" className="nav-link">Home</Link>
-      <Link to="/reports" className="nav-link">Reports</Link>
-      <Link to="/" className="nav-link">Dashboard</Link>
-    </nav>
+      {/* Main App Container */}
+      <div className="admin-main-container">
+        {/* Sticky Top Header */}
+        <AdminTopHeader 
+          onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+          activeKey="/add-project"
+        />
 
-    <div className="header-right">
-      <button type="button" className="btn-header-action btn-draft-top" id="btn-save-draft-top"
-        title="Save current progress as draft">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-          <polyline points="17 21 17 13 7 13 7 21" />
-          <polyline points="7 3 7 8 15 8" />
-        </svg>
-        Save Draft
-      </button>
-      <Link to="/" className="btn btn-reports" style={{backgroundColor: 'var(--color-purple)', color: '#ffffff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center'}}>
-        Exit Form
-      </Link>
-    </div>
-
-  </header>
-
-  {/* ===== Main Form Page ===== */}
-  <main className="form-page-container">
+        {/* Scrollable Main Content */}
+        <main className="admin-scrollable-content px-6 py-6 sm:px-10 sm:py-8">
 
     {/* Top Intro & Status Bar */}
     <div className="page-intro-header">
@@ -1898,46 +1882,49 @@ const AddProject = () => {
       </div>
     </div>
 
-  </main>
+        </main>
 
-  {/* ================= SUBMISSION SUCCESS MODAL ================= */}
-  <div className="success-modal-backdrop" id="success-modal">
-    <div className="success-modal-card">
-      <div className="success-icon-badge">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="20 6 9 17 4 12" />
+        <Footer />
+      </div>
+
+      {/* ================= SUBMISSION SUCCESS MODAL ================= */}
+      <div className="success-modal-backdrop" id="success-modal">
+        <div className="success-modal-card">
+          <div className="success-icon-badge">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+
+          <h3 className="success-modal-title">Project Successfully Submitted!</h3>
+          <p className="success-modal-sub">
+            Your project details have been successfully ingested into the NIVARA Central Repository of Projects. Initial
+            risk signals and automated timeline forecasting will begin processing.
+          </p>
+
+          <div className="project-id-chip-box">
+            <span>GENERATED NIVARA PROJECT ID</span>
+            <strong id="modal-display-project-id">NIV-2026-PRJ-XXXX</strong>
+            <div style={{fontSize: '11px', color: '#64748b', marginTop: '4px'}}>Tracking No: <span
+                id="modal-display-tracking-no">TRK-XXXXXXXX</span></div>
+          </div>
+
+          <div style={{display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px'}}>
+            <Link to="/reports" className="btn-step btn-next" style={{textDecoration: 'none'}}>View in Reports Portal</Link>
+            <Link to="/dashboard" className="btn-step btn-prev" style={{textDecoration: 'none'}}>Return to Dashboard</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ================= TOAST NOTIFICATION ================= */}
+      <div className="toast-notice" id="toast-notice">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
+          <circle cx="12" cy="12" r="10" />
+          <path d="m9 12 2 2 4-4" />
         </svg>
+        <span id="toast-message">Notification message</span>
       </div>
-
-      <h3 className="success-modal-title">Project Successfully Submitted!</h3>
-      <p className="success-modal-sub">
-        Your project details have been successfully ingested into the NIVARA Central Repository of Projects. Initial
-        risk signals and automated timeline forecasting will begin processing.
-      </p>
-
-      <div className="project-id-chip-box">
-        <span>GENERATED NIVARA PROJECT ID</span>
-        <strong id="modal-display-project-id">NIV-2026-PRJ-XXXX</strong>
-        <div style={{fontSize: '11px', color: '#64748b', marginTop: '4px'}}>Tracking No: <span
-            id="modal-display-tracking-no">TRK-XXXXXXXX</span></div>
-      </div>
-
-      <div style={{display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px'}}>
-        <a href="reports.html" className="btn-step btn-next" style={{textDecoration: 'none'}}>View in Reports Portal</a>
-        <a href="index.html" className="btn-step btn-prev" style={{textDecoration: 'none'}}>Return to Dashboard</a>
-      </div>
-    </div>
-  </div>
-
-  {/* ================= TOAST NOTIFICATION ================= */}
-  <div className="toast-notice" id="toast-notice">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
-      <circle cx="12" cy="12" r="10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-    <span id="toast-message">Notification message</span>
-  </div>
     </div>
   );
 };

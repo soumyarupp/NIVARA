@@ -63,13 +63,13 @@ const Login = () => {
       return;
     }
 
-    // Success State -> Redirect to Home page
-    setAuthAlert({ message: "Authentication successful! Redirecting to Home Page...", isError: false });
+    // Success State -> Redirect to Dashboard workspace
+    setAuthAlert({ message: "Authentication successful! Redirecting to Workspace...", isError: false });
     setIsSubmitting(true);
     localStorage.setItem('nivara_auth', 'true');
 
     setTimeout(() => {
-      navigate('/');
+      navigate('/dashboard');
     }, 1200);
   };
 
