@@ -66,7 +66,7 @@ const Home = () => {
               <div
                 className="stat-card stat-card--risk"
                 style={{ cursor: 'pointer' }}
-                onClick={() => navigate('/reports')}
+                onClick={() => navigate('/login')}
               >
                 <p className="stat-label">Projects at Risk</p>
                 <p className="stat-value stat-value--risk">{overview.summary.projectsAtRisk}</p>
@@ -158,7 +158,7 @@ const Home = () => {
                   Monitor high-priority Central Sector assets, state risk clusters, delay factors, and ministerial intervention watchlists.
                 </p>
               </div>
-              <Link to="/projects" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>Access Projects</span>
                 <span>&rarr;</span>
               </Link>
@@ -175,7 +175,7 @@ const Home = () => {
                   View aggregate portfolio cost evolution, sector-wise expenditure analysis, risk score distribution, and financial health breakdown.
                 </p>
               </div>
-              <Link to="/dashboard" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>Access Dashboard</span>
                 <span>&rarr;</span>
               </Link>
@@ -192,7 +192,7 @@ const Home = () => {
                   Explore NIVARA's 6 AI Machine Learning engines: Early Warning Alerts, AI Chatbot, NLP Delay Classifier, Fund vs Physical Mismatch, Pre-Approval Simulator, and What-If Delay Impact.
                 </p>
               </div>
-              <Link to="/risk-intelligence" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>Explore Risk Intelligence</span>
                 <span>&rarr;</span>
               </Link>
@@ -202,14 +202,14 @@ const Home = () => {
             <div className="ai-feature-card">
               <div className="ai-feature-top">
                 <div className="ai-feature-icon" style={{ backgroundColor: '#e0f2fe', color: '#0284c7' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 1-2 2v16a2 2 0 0 1 2 2h12a2 2 0 0 1 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 </div>
                 <h3 className="ai-feature-title">4. Risk &amp; Delay Reports</h3>
                 <p className="ai-feature-desc">
                   Access comprehensive machine learning early-warning risk reports, milestone forecasts, and contractor performance audits.
                 </p>
               </div>
-              <Link to="/reports" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>View Reports</span>
                 <span>&rarr;</span>
               </Link>

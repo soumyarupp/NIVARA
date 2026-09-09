@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const HeaderNav = ({ activeKey }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [fontScale, setFontScale] = useState(1);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
 
   const currentPath = activeKey || location.pathname;
+
+  // Check if user is authenticated or on an authenticated route
+  const authStored = localStorage.getItem('nivara_auth') === 'true';
+  const isAuthRoute = ['/projects', '/dashboard', '/risk-intelligence', '/reports', '/add-project'].includes(currentPath);
+  const isAuthenticated = authStored || isAuthRoute;
 
   const handleFontIncrease = () => {
     const newScale = Math.min(1.3, fontScale + 0.1);
@@ -19,6 +25,12 @@ const HeaderNav = ({ activeKey }) => {
     const newScale = Math.max(0.85, fontScale - 0.1);
     setFontScale(newScale);
     document.documentElement.style.fontSize = `${newScale * 100}%`;
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('nivara_auth');
+    navigate('/');
+    window.location.reload();
   };
 
   const handleContactSubmit = (e) => {
@@ -43,28 +55,92 @@ const HeaderNav = ({ activeKey }) => {
           </div>
         </div>
 
-        <nav className="header-nav">
-          <Link to="/" className={`nav-link ${currentPath === '/' ? 'active' : ''}`}>Home</Link>
-          <Link to="/login" className="nav-link">Projects</Link>
-          <Link to="/login" className="nav-link">Dashboard</Link>
-          <Link to="/login" className="nav-link">Risk Intelligence</Link>
+        {/* Authenticated Workspace Links */}
+        {isAuthenticated && (
+          <nav className="header-nav">
+            <Link to="/projects" className={`nav-link ${currentPath === '/projects' ? 'active' : ''}`}>Projects</Link>
+            <Link to="/dashboard" className={`nav-link ${currentPath === '/dashboard' ? 'active' : ''}`}>Dashboard</Link>
+            <Link to="/risk-intelligence" className={`nav-link ${currentPath === '/risk-intelligence' ? 'active' : ''}`}>Risk Intelligence</Link>
+            <Link to="/reports" className={`nav-link ${currentPath === '/reports' ? 'active' : ''}`}>Reports</Link>
+          </nav>
+        )}
+
+        {/* Right Section: Home and Contact Us shifted close to Add Project button with identical button sizing */}
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link
+            to="/"
+            className={`btn-nav-pill ${currentPath === '/' ? 'active' : ''}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px 16px',
+              minWidth: '105px',
+              height: '36px',
+              borderRadius: '6px',
+              fontSize: '13.5px',
+              fontWeight: '700',
+              color: '#ffffff',
+              backgroundColor: currentPath === '/' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.1)',
+              border: currentPath === '/' ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.2)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+              boxSizing: 'border-box',
+              lineHeight: 1
+            }}
+          >
+            Home
+          </Link>
+
           <button
             type="button"
-            className="nav-link"
+            className="btn-nav-pill"
             onClick={() => setIsContactOpen(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px 16px',
+              minWidth: '105px',
+              height: '36px',
+              borderRadius: '6px',
+              fontSize: '13.5px',
+              fontWeight: '700',
+              color: '#ffffff',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+              boxSizing: 'border-box',
+              lineHeight: 1,
+              fontFamily: 'inherit'
+            }}
           >
             Contact Us
           </button>
-        </nav>
 
-        <div className="header-right">
-          <Link to="/login" className="btn btn-add" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            + Add Project / Update
-          </Link>
-          <Link to="/login" className="btn btn-reports" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            Reports
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link to="/add-project" className="btn btn-add" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                + Add Project / Update
+              </Link>
+              <button
+                type="button"
+                className="btn btn-reports"
+                onClick={handleLogout}
+                style={{ background: '#ef4444', borderColor: '#dc2626', color: '#ffffff', cursor: 'pointer' }}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link to="/login" className="btn btn-add" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+              Sign In to Workspace &rarr;
+            </Link>
+          )}
+
           <div className="font-controls">
             <button type="button" className="font-btn" onClick={handleFontDecrease}>A-</button>
             <button type="button" className="font-btn" onClick={handleFontIncrease}>A+</button>
