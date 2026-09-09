@@ -65,58 +65,19 @@ const HeaderNav = ({ activeKey }) => {
           </nav>
         )}
 
-        {/* Right Section: Home and Contact Us shifted close to Add Project button with identical button sizing */}
-        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Right Section: Home and Contact Us text navigation links */}
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <Link
             to="/"
-            className={`btn-nav-pill ${currentPath === '/' ? 'active' : ''}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '8px 16px',
-              minWidth: '105px',
-              height: '36px',
-              borderRadius: '6px',
-              fontSize: '13.5px',
-              fontWeight: '700',
-              color: '#ffffff',
-              backgroundColor: currentPath === '/' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.1)',
-              border: currentPath === '/' ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.2)',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              boxSizing: 'border-box',
-              lineHeight: 1
-            }}
+            className={`nav-link ${currentPath === '/' ? 'active' : ''}`}
           >
             Home
           </Link>
 
           <button
             type="button"
-            className="btn-nav-pill"
+            className="nav-link"
             onClick={() => setIsContactOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '8px 16px',
-              minWidth: '105px',
-              height: '36px',
-              borderRadius: '6px',
-              fontSize: '13.5px',
-              fontWeight: '700',
-              color: '#ffffff',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              boxSizing: 'border-box',
-              lineHeight: 1,
-              fontFamily: 'inherit'
-            }}
           >
             Contact Us
           </button>

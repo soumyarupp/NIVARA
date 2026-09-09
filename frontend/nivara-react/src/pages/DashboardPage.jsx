@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 import './Reports.css';
-import HeaderNav from '../components/HeaderNav';
+import AdminSidebar from '../components/AdminSidebar';
+import AdminTopHeader from '../components/AdminTopHeader';
 import Footer from '../components/Footer';
 import dashboardApi from '../api/dashboardApi';
 import projectApi from '../api/projectApi';
@@ -9,6 +10,7 @@ import ProjectDashboard from '../components/ProjectDashboard';
 import ReportsView from '../components/ReportsView';
 
 const DashboardPage = () => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [overview, setOverview] = useState({
     summary: {
       totalProjects: 186,
@@ -20,8 +22,9 @@ const DashboardPage = () => {
     }
   });
 
-  const [attentionProjects, setAttentionProjects] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [activeModal, setActiveModal] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   useEffect(() => {
     async function loadData() {
@@ -32,7 +35,7 @@ const DashboardPage = () => {
         }
         const projRes = await projectApi.getProjects();
         if (projRes && projRes.projects) {
-          setAttentionProjects(projRes.projects);
+          setProjects(projRes.projects);
         }
       } catch (err) {
         console.error("DashboardPage fetch error:", err);
@@ -41,112 +44,40 @@ const DashboardPage = () => {
     loadData();
   }, []);
 
+  const handleInspectProject = (proj) => {
+    setSelectedProject(proj);
+    setActiveModal('reports');
+  };
+
   return (
-    <div className="dashboard-page-wrapper">
-      <HeaderNav activeKey="/dashboard" />
+    <div className={`admin-app-wrapper ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      {/* Persistent Left Sidebar */}
+      <AdminSidebar 
+        isCollapsed={isSidebarCollapsed} 
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+      />
 
-      <main className="page-container">
-        {/* ===== PAGE TITLE BANNER ===== */}
-        <div className="standalone-reports-page" style={{ padding: '0 0 20px 0' }}>
-          <div className="page-title-banner" style={{ margin: '20px 0' }}>
-            <h1>National Infrastructure Dashboard</h1>
-            <p>
-              Real-time aggregated health breakdown, portfolio cost evolution, sector-wise expenditure analysis, and risk distribution across 186 monitored Central Sector Mega Projects.
-            </p>
-          </div>
-        </div>
+      {/* Main App Container */}
+      <div className="admin-main-container">
+        {/* Sticky Top Header */}
+        <AdminTopHeader 
+          onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+          activeKey="/dashboard"
+        />
 
-        {/* ===== NATIONAL INFRASTRUCTURE RISK OVERVIEW ===== */}
-        <section className="dashboard-section" id="risk-overview">
-          <div className="section-header">
-            <div className="section-title-row">
-              <h2 className="section-title">National Infrastructure Risk Overview</h2>
-              <span className="demo-pill">Demo Data</span>
-            </div>
-            <p className="section-subtitle">
-              Real-time aggregated health breakdown across 186 monitored Central Sector Mega Projects.
-            </p>
-          </div>
+        {/* Scrollable Dashboard View */}
+        <main className="admin-scrollable-content px-6 py-6 sm:px-10 sm:py-8">
+          <ProjectDashboard 
+            projects={projects} 
+            onInspect={handleInspectProject} 
+          />
+        </main>
 
-          <div className="overview-grid">
-            <div className="overview-card">
-              <div className="overview-card-header">
-                <span className="overview-card-title">Total Projects</span>
-                <span style={{ background: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>100%</span>
-              </div>
-              <div className="overview-card-val">{overview.summary.totalProjects}</div>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Monitored Central Sector Infrastructure</span>
-            </div>
+        {/* Admin Footer */}
+        <Footer />
+      </div>
 
-            <div className="overview-card">
-              <div className="overview-card-header">
-                <span className="overview-card-title">On Track</span>
-                <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>66.7%</span>
-              </div>
-              <div className="overview-card-val" style={{ color: '#16a34a' }}>{overview.summary.onTrack}</div>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Progressing within scheduled timeline</span>
-            </div>
-
-            <div className="overview-card">
-              <div className="overview-card-header">
-                <span className="overview-card-title">At Risk</span>
-                <span style={{ background: '#ffedd5', color: '#c2410c', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>23.7%</span>
-              </div>
-              <div className="overview-card-val" style={{ color: '#ea580c' }}>{overview.summary.atRisk}</div>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Moderate slippage / warning indicators</span>
-            </div>
-
-            <div className="overview-card">
-              <div className="overview-card-header">
-                <span className="overview-card-title">Critical</span>
-                <span style={{ background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>9.7%</span>
-              </div>
-              <div className="overview-card-val" style={{ color: '#dc2626' }}>{overview.summary.critical}</div>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Severe delay &amp; cost escalation risk</span>
-            </div>
-          </div>
-
-          <div className="risk-dist-box">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>National Portfolio Risk Level Distribution</span>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>186 Projects Analyzed</span>
-            </div>
-
-            <div className="dist-bar-track">
-              <div className="dist-bar-seg" style={{ width: '66.7%', background: '#10b981' }} title="Low Risk: 124 projects"></div>
-              <div className="dist-bar-seg" style={{ width: '14.0%', background: '#eab308' }} title="Medium Risk: 26 projects"></div>
-              <div className="dist-bar-seg" style={{ width: '9.7%', background: '#f97316' }} title="High Risk: 18 projects"></div>
-              <div className="dist-bar-seg" style={{ width: '9.7%', background: '#dc2626' }} title="Critical Risk: 18 projects"></div>
-            </div>
-
-            <div className="dist-legend">
-              <div className="dist-legend-item">
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></span>
-                <span>Low Risk: <strong>124 Projects (66.7%)</strong></span>
-              </div>
-              <div className="dist-legend-item">
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#eab308' }}></span>
-                <span>Medium Risk: <strong>26 Projects (14.0%)</strong></span>
-              </div>
-              <div className="dist-legend-item">
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f97316' }}></span>
-                <span>High Risk: <strong>18 Projects (9.7%)</strong></span>
-              </div>
-              <div className="dist-legend-item">
-                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#dc2626' }}></span>
-                <span>Critical Risk: <strong>18 Projects (9.7%)</strong></span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== PROJECT DASHBOARD COMPONENT ===== */}
-        <ProjectDashboard projects={attentionProjects} onInspect={() => setActiveModal('reports')} />
-      </main>
-
-      <Footer />
-
-      {/* Reports Modal */}
+      {/* Reports / Inspection Modal */}
       {activeModal === 'reports' && (
         <div className="reports-modal-backdrop active" onClick={(e) => { if (e.target.classList.contains('reports-modal-backdrop')) setActiveModal(null); }}>
           <div className="reports-modal-card">
@@ -158,8 +89,8 @@ const DashboardPage = () => {
                   </svg>
                 </div>
                 <div className="modal-header-titles">
-                  <h2>NIVARA AI Predictive Risk &amp; Delay Reports</h2>
-                  <p>Machine learning early-warning engine for Central Sector Mega Projects</p>
+                  <h2>NIVARA AI Risk Inspection: {selectedProject ? selectedProject.name : 'Central Sector Overview'}</h2>
+                  <p>Machine learning early-warning risk audit &amp; milestone forecasts</p>
                 </div>
               </div>
               <button className="modal-close-btn" onClick={() => setActiveModal(null)} title="Close Reports">&times;</button>

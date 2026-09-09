@@ -29,6 +29,8 @@ const Home = () => {
     initData();
   }, []);
 
+  const isAuthenticated = localStorage.getItem('nivara_auth') === 'true';
+
   return (
     <div className="dashboard-page-wrapper">
       <HeaderNav activeKey="/" />
@@ -66,7 +68,7 @@ const Home = () => {
               <div
                 className="stat-card stat-card--risk"
                 style={{ cursor: 'pointer' }}
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}
               >
                 <p className="stat-label">Projects at Risk</p>
                 <p className="stat-value stat-value--risk">{overview.summary.projectsAtRisk}</p>
@@ -158,7 +160,7 @@ const Home = () => {
                   Monitor high-priority Central Sector assets, state risk clusters, delay factors, and ministerial intervention watchlists.
                 </p>
               </div>
-              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to={isAuthenticated ? "/projects" : "/login"} className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>Access Projects</span>
                 <span>&rarr;</span>
               </Link>
@@ -175,7 +177,7 @@ const Home = () => {
                   View aggregate portfolio cost evolution, sector-wise expenditure analysis, risk score distribution, and financial health breakdown.
                 </p>
               </div>
-              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to={isAuthenticated ? "/dashboard" : "/login"} className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>Access Dashboard</span>
                 <span>&rarr;</span>
               </Link>
@@ -192,7 +194,7 @@ const Home = () => {
                   Explore NIVARA's 6 AI Machine Learning engines: Early Warning Alerts, AI Chatbot, NLP Delay Classifier, Fund vs Physical Mismatch, Pre-Approval Simulator, and What-If Delay Impact.
                 </p>
               </div>
-              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to={isAuthenticated ? "/risk-intelligence" : "/login"} className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>Explore Risk Intelligence</span>
                 <span>&rarr;</span>
               </Link>
@@ -209,7 +211,7 @@ const Home = () => {
                   Access comprehensive machine learning early-warning risk reports, milestone forecasts, and contractor performance audits.
                 </p>
               </div>
-              <Link to="/login" className="btn-feature-action" style={{ textDecoration: 'none' }}>
+              <Link to={isAuthenticated ? "/reports" : "/login"} className="btn-feature-action" style={{ textDecoration: 'none' }}>
                 <span>View Reports</span>
                 <span>&rarr;</span>
               </Link>
@@ -226,9 +228,15 @@ const Home = () => {
               Detailed project telemetry, expenditure data, statutory clearance delays, and AI predictive simulations are confidential and restricted to authorized government officials.
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <Link to="/login" className="btn btn-add" style={{ textDecoration: 'none', background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', color: '#ffffff', padding: '12px 24px', fontSize: '14px', fontWeight: '700', borderRadius: '10px' }}>
-                Sign In to Official Workspace &rarr;
-              </Link>
+              {isAuthenticated ? (
+                <Link to="/dashboard" className="btn btn-add" style={{ textDecoration: 'none', background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', color: '#ffffff', padding: '12px 24px', fontSize: '14px', fontWeight: '700', borderRadius: '10px' }}>
+                  Open Dashboard Workspace &rarr;
+                </Link>
+              ) : (
+                <Link to="/login" className="btn btn-add" style={{ textDecoration: 'none', background: 'linear-gradient(135deg, #14b8a6, #0ea5e9)', color: '#ffffff', padding: '12px 24px', fontSize: '14px', fontWeight: '700', borderRadius: '10px' }}>
+                  Sign In to Official Workspace &rarr;
+                </Link>
+              )}
             </div>
           </div>
         </section>

@@ -63,13 +63,13 @@ const Login = () => {
       return;
     }
 
-    // Success State -> Redirect to Dashboard workspace
-    setAuthAlert({ message: "Authentication successful! Redirecting to Workspace...", isError: false });
+    // Success State -> Redirect to Home page
+    setAuthAlert({ message: "Authentication successful! Redirecting to Home Page...", isError: false });
     setIsSubmitting(true);
     localStorage.setItem('nivara_auth', 'true');
 
     setTimeout(() => {
-      navigate('/dashboard');
+      navigate('/');
     }, 1200);
   };
 
@@ -80,6 +80,13 @@ const Login = () => {
     } else {
       setAuthAlert({ message: "Please enter your official username or email above, then click Forgot Password.", isError: true });
     }
+  };
+
+  const handleAutoFillDemo = () => {
+    setUsername('admin@nivara.gov.in');
+    setPassword('nivara2026');
+    setCaptchaInputVal(captchaCode);
+    setAuthAlert({ message: 'Demo credentials auto-filled! Click Sign In to enter.', isError: false });
   };
 
   return (
@@ -156,6 +163,24 @@ const Login = () => {
             <div className="card-header">
               <h2 className="card-title">Access Workspace</h2>
               <p className="card-subtitle">Sign in to manage projects and stream predictive analytics</p>
+            </div>
+
+            {/* Quick Demo Credentials Box */}
+            <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <strong style={{ fontSize: '12.5px', color: '#0369a1' }}>Demo Access Credentials</strong>
+                <button
+                  type="button"
+                  onClick={handleAutoFillDemo}
+                  style={{ background: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  Auto-fill Demo &rarr;
+                </button>
+              </div>
+              <p style={{ fontSize: '12px', color: '#334155', margin: 0 }}>
+                <strong>Username:</strong> <code style={{ background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', color: '#0369a1' }}>admin@nivara.gov.in</code><br/>
+                <strong>Password:</strong> <code style={{ background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', color: '#0369a1' }}>nivara2026</code>
+              </p>
             </div>
 
             {/* Alert / Toast Message */}

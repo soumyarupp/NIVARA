@@ -1,20 +1,21 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, Legend, PieChart, Pie, Cell,
 } from 'recharts';
 import { 
-  Search, Bell, Download, ShieldAlert, AlertTriangle, 
-  TrendingUp, TrendingDown, ChevronDown
+  Search, AlertTriangle, TrendingUp, TrendingDown, 
+  Layers, FileCheck2, Clock, MapPin, Zap, ShieldAlert, Cpu
 } from 'lucide-react';
 
 const costEvolutionData = [
-  { name: 'Nov', expenditure: 10, original: 30, revised: 32 },
-  { name: 'Dec', expenditure: 15, original: 31, revised: 34 },
-  { name: 'Jan', expenditure: 18, original: 31, revised: 35 },
-  { name: 'Feb', expenditure: 20, original: 31, revised: 36 },
-  { name: 'Mar', expenditure: 22, original: 31, revised: 37 },
-  { name: 'Apr', expenditure: 25, original: 31, revised: 38 },
+  { name: 'Nov', expenditure: 10.2, original: 30.0, revised: 32.4 },
+  { name: 'Dec', expenditure: 15.4, original: 31.0, revised: 34.1 },
+  { name: 'Jan', expenditure: 18.8, original: 31.0, revised: 35.6 },
+  { name: 'Feb', expenditure: 20.5, original: 31.0, revised: 36.8 },
+  { name: 'Mar', expenditure: 22.9, original: 31.0, revised: 37.9 },
+  { name: 'Apr', expenditure: 25.4, original: 31.0, revised: 38.2 },
 ];
 
 const sectorData = [
@@ -29,415 +30,527 @@ const sectorData = [
 ];
 
 const riskData = [
-  { name: 'High', value: 486, color: '#ef4444' },
-  { name: 'Medium', value: 712, color: '#f59e0b' },
-  { name: 'Low', value: 783, color: '#10b981' },
+  { name: 'Critical Risk', value: 18, color: '#ef4444' },
+  { name: 'High Risk', value: 26, color: '#f97316' },
+  { name: 'Medium Risk', value: 44, color: '#eab308' },
+  { name: 'Low Risk', value: 98, color: '#10b981' },
 ];
 
 const escalationDrivers = [
-  { name: 'Land acquisition delays', value: 26 },
-  { name: 'Statutory clearances', value: 21 },
-  { name: 'Contractor performance', value: 18 },
-  { name: 'Funding constraints', value: 15 },
-  { name: 'Material price escalation', value: 12 },
-  { name: 'Design changes', value: 8 },
+  { name: 'Land Acquisition Delays', value: 28, color: '#0284c7' },
+  { name: 'Statutory & Environmental Clearances', value: 24, color: '#6366f1' },
+  { name: 'Contractor Performance & Mobilization', value: 20, color: '#0d9488' },
+  { name: 'Funding Constraints & Allocation Gaps', value: 15, color: '#f59e0b' },
+  { name: 'Material & Equipment Price Escalation', value: 13, color: '#ec4899' },
+];
+
+const clearanceBottlenecks = [
+  { name: 'Forest & Wildlife Clearance Stage II', pending: 34, avgDays: '142 days', risk: 'High' },
+  { name: 'State Land Acquisition Possession', pending: 28, avgDays: '188 days', risk: 'Critical' },
+  { name: 'Railway Safety Commissioner Sanction', pending: 19, avgDays: '65 days', risk: 'Medium' },
+  { name: 'Environmental Impact Assessment (EIA)', pending: 15, avgDays: '92 days', risk: 'Medium' },
 ];
 
 const ProjectDashboard = ({ projects = [], onInspect }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [sectorFilter, setSectorFilter] = useState('All');
+  const [timeRange, setTimeRange] = useState('YTD');
+
+  const sectors = useMemo(() => {
+    const set = new Set(projects.map(p => p.sector).filter(Boolean));
+    return ['All', ...Array.from(set)];
+  }, [projects]);
+
   const filteredProjects = useMemo(() => {
-    if (!searchQuery) return projects;
-    const q = searchQuery.toLowerCase();
-    return projects.filter(p => 
-      [p.name, p.id, p.sector].join(' ').toLowerCase().includes(q)
-    );
-  }, [projects, searchQuery]);
+    return projects.filter(p => {
+      const matchesSearch = !searchQuery || [p.name, p.id, p.sector, p.state].join(' ').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSector = sectorFilter === 'All' || p.sector === sectorFilter;
+      return matchesSearch && matchesSector;
+    });
+  }, [projects, searchQuery, sectorFilter]);
 
   return (
-    <div id="project-dashboard" className="bg-[#f8fafc] text-slate-800 font-sans border border-slate-200/90 rounded-2xl overflow-hidden shadow-sm leading-normal my-8">
+    <div className="main-dashboard-content space-y-7 text-slate-800">
       
-      {/* Top Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+      {/* ===== HEADER BANNER (EXPLICIT PADDING GUARANTEED) ===== */}
+      <div className="dashboard-banner flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight leading-snug">Infrastructure Monitoring Overview</h2>
-            <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">National Infrastructure Dashboard</h1>
+            <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200/80 flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Telemetry Active
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 font-normal">Central Sector projects costing ₹150 Cr & above • updated Apr 2026</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
+            Real-time project breakdown, cost evolution, sector performance, and risk distribution across 186 Mega Assets.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap shrink-0">
-          <div className="relative min-w-[200px] sm:w-[240px]">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input 
-              type="text" 
-              placeholder="Search projects..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200/60">
+            {['30D', '90D', 'YTD', 'All'].map(range => (
+              <button
+                key={range}
+                type="button"
+                onClick={() => setTimeRange(range)}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${timeRange === range ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                {range}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 cursor-pointer hover:bg-slate-100 transition-colors text-sm font-medium text-slate-700 shrink-0">
-             <span>all</span>
-             <ChevronDown className="w-4 h-4 text-slate-400" />
-          </div>
-          <button className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0" title="Notifications">
-            <Bell className="w-4 h-4" />
-          </button>
-          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95 whitespace-nowrap shrink-0">
-            <Download className="w-4 h-4" /> Export
-          </button>
-        </div>
-      </header>
 
-      {/* Main Content Dashboard */}
-      <div className="p-6">
+          <Link to="/add-project" className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-xs">
+            + Add Project
+          </Link>
+        </div>
+      </div>
+
+      {/* ===== 4 KPI METRIC CARDS (EXPLICIT PADDING GUARANTEED) ===== */}
+      <div className="dashboard-grid-4">
         
-        {/* KPI Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-          
-          {/* KPI 1 */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[136px]">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Projects Monitored</span>
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-              </div>
-              <div className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">1,981</div>
-            </div>
-            <div className="flex items-center justify-between text-xs pt-3 mt-3 border-t border-slate-100 gap-2 flex-wrap">
-              <span className="text-slate-500 font-medium">across 17 ministries</span>
-              <span className="inline-flex items-center gap-1 text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-full border border-red-100/80 text-[11px]">
-                <TrendingUp className="w-3 h-3" /> +34 this month
+        {/* KPI 1: Monitored Projects */}
+        <div className="kpi-card">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="p-2.5 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 shrink-0">
+                <Layers size={18} />
+              </span>
+              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/80 shrink-0">
+                <TrendingUp size={13} /> +12.5%
               </span>
             </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-3">186</div>
+            <div className="text-xs font-bold text-slate-700 mt-1">Monitored Mega Projects</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">17 Nodal Ministries</div>
           </div>
-
-          {/* KPI 2 */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[136px]">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Aggregate Cost Overrun</span>
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              </div>
-              <div className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">₹5.65 L Cr</div>
-            </div>
-            <div className="flex items-center justify-between text-xs pt-3 mt-3 border-t border-slate-100 gap-2 flex-wrap">
-              <span className="text-slate-500 font-medium">15.2% over original</span>
-              <span className="inline-flex items-center gap-1 text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-full border border-red-100/80 text-[11px]">
-                <TrendingUp className="w-3 h-3" /> +0.4% MoM
-              </span>
-            </div>
-          </div>
-
-          {/* KPI 3 */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[136px]">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Projects At Risk</span>
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
-              </div>
-              <div className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">486</div>
-            </div>
-            <div className="flex items-center justify-between text-xs pt-3 mt-3 border-t border-slate-100 gap-2 flex-wrap">
-              <span className="text-slate-500 font-medium">24.5% of portfolio</span>
-              <span className="inline-flex items-center gap-1 text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-full border border-red-100/80 text-[11px]">
-                <TrendingUp className="w-3 h-3" /> +18 flagged
-              </span>
-            </div>
-          </div>
-
-          {/* KPI 4 */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between min-h-[136px]">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg. Predicted Delay</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              </div>
-              <div className="text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">11.3 mo</div>
-            </div>
-            <div className="flex items-center justify-between text-xs pt-3 mt-3 border-t border-slate-100 gap-2 flex-wrap">
-              <span className="text-slate-500 font-medium">weighted by cost</span>
-              <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/80 text-[11px]">
-                <TrendingDown className="w-3 h-3" /> -0.6 mo MoM
-              </span>
-            </div>
-          </div>
-
         </div>
 
-        {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          
-          {/* Area Chart */}
-          <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
-            <div className="mb-4">
-              <h3 className="text-base font-bold text-slate-900 leading-tight">Portfolio Cost Evolution</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Aggregate ₹ lakh crore across monitoring cycles</p>
+        {/* KPI 2: Total Monitored Outlay */}
+        <div className="kpi-card">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="p-2.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 shrink-0">
+                <FileCheck2 size={18} />
+              </span>
+              <span className="text-xs font-bold text-sky-600 flex items-center gap-1 bg-sky-50 px-2.5 py-1 rounded-full border border-sky-100/80 shrink-0">
+                100% Capital
+              </span>
             </div>
-            <div className="h-[270px] w-full">
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-3">₹48.2 L Cr</div>
+            <div className="text-xs font-bold text-slate-700 mt-1">Total Monitored Outlay</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">Sanctioned Capital Cover</div>
+          </div>
+        </div>
+
+        {/* KPI 3: Projects at Risk */}
+        <div className="kpi-card">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="p-2.5 rounded-xl bg-red-50 text-red-600 border border-red-100 shrink-0">
+                <AlertTriangle size={18} />
+              </span>
+              <span className="text-xs font-bold text-red-600 flex items-center gap-1 bg-red-50 px-2.5 py-1 rounded-full border border-red-100/80 shrink-0">
+                <TrendingUp size={13} /> 18 Critical
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-red-600 tracking-tight mt-3">44</div>
+            <div className="text-xs font-bold text-slate-700 mt-1">Projects Flagged at Risk</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">23.7% of Active Portfolio</div>
+          </div>
+        </div>
+
+        {/* KPI 4: Avg Predicted Delay */}
+        <div className="kpi-card">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 shrink-0">
+                <Clock size={18} />
+              </span>
+              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/80 shrink-0">
+                <TrendingDown size={13} /> -0.6 mo MoM
+              </span>
+            </div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight mt-3">11.3 Months</div>
+            <div className="text-xs font-bold text-slate-700 mt-1">Avg. Predicted Delay</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">Cost-weighted Average</div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ===== PRIMARY ANALYTICS (2-COLUMN GRID) ===== */}
+      <div className="dashboard-grid-2">
+        
+        {/* Portfolio Cost Evolution (Area Chart) */}
+        <div className="dashboard-card flex flex-col justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Portfolio Cost Evolution</h2>
+              <p className="text-xs text-slate-500 mt-0.5">₹ Lakh Crore expenditure vs cost sanctions</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-semibold text-slate-600">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span> Actual</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Revised</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span> Original</span>
+            </div>
+          </div>
+
+          <div className="h-[260px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={costEvolutionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25}/>
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} dy={6} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} dx={-2} />
+                <RechartsTooltip 
+                  contentStyle={{backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px', padding: '10px 14px'}}
+                />
+                <Area type="monotone" dataKey="revised" name="Revised Cost (₹L Cr)" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorRev)" />
+                <Area type="monotone" dataKey="original" name="Original Sanction (₹L Cr)" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="3 3" fill="none" />
+                <Area type="monotone" dataKey="expenditure" name="Actual Expenditure (₹L Cr)" stroke="#0ea5e9" strokeWidth={2} fillOpacity={1} fill="url(#colorExp)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Risk Score Distribution (Donut Chart) */}
+        <div className="dashboard-card flex flex-col justify-between">
+          <div className="mb-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Risk Score Distribution</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Project risk categorization breakdown</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center my-2">
+            <div className="space-y-2.5">
+              {riskData.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs py-2 px-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
+                    <span className="text-slate-700 font-bold">{item.name}</span>
+                  </div>
+                  <span className="font-extrabold text-slate-900">{item.value} Projects</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="h-[190px] relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={costEvolutionData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.15}/>
-                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={8} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-5} />
-                  <RechartsTooltip 
-                    contentStyle={{backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '13px', padding: '10px 14px'}}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '15px', color: '#475569' }} />
-                  <Area type="monotone" dataKey="revised" name="Revised Cost" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRev)" />
-                  <Area type="monotone" dataKey="original" name="Original Cost" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" fill="none" />
-                  <Area type="monotone" dataKey="expenditure" name="Expenditure" stroke="#0ea5e9" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExp)" />
-                </AreaChart>
+                <PieChart>
+                  <Pie
+                    data={riskData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={52}
+                    outerRadius={78}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {riskData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip contentStyle={{backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px', padding: '8px 12px'}} />
+                </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Donut Chart with Left-Side Breakdown */}
-          <div className="lg:col-span-1 bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
-            <div className="mb-2">
-              <h3 className="text-base font-bold text-slate-900 leading-tight">Risk Score Distribution</h3>
-              <p className="text-xs text-slate-500 mt-0.5">AI-generated project risk levels</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center my-2">
-              {/* Left Side: Breakdown & Medium Risk Number */}
-              <div className="flex flex-col gap-2.5">
-                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Monitored</span>
-                  <span className="text-2xl font-extrabold text-slate-900 leading-none">1,981</span>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0"></span>
-                      <span className="text-slate-700">High Risk</span>
-                    </div>
-                    <span className="text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-100">486</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-                      <span className="text-slate-700">Medium Risk</span>
-                    </div>
-                    <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-100">712</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                      <span className="text-slate-700">Low Risk</span>
-                    </div>
-                    <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">783</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Side: Clean Donut Chart */}
-              <div className="h-[160px] relative flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={riskData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={42}
-                      outerRadius={65}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {riskData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip contentStyle={{backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px'}} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            
-            {/* Custom Legend Footer */}
-            <div className="flex justify-between items-center text-xs text-slate-500 font-medium pt-2.5 border-t border-slate-100">
-              <span>Risk Engine: Operational</span>
-              <span className="text-slate-700 font-semibold">3 Levels Categorized</span>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Charts Row 2 & Table */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          
-          {/* Left Column for Bar Chart and Table */}
-          <div className="xl:col-span-2 flex flex-col gap-6">
-            
-            {/* Cost Overrun by Sector */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-base font-bold text-slate-900 leading-tight">Cost Overrun by Sector</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Reported vs model-predicted escalation</p>
-              </div>
-              <div className="h-[230px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sectorData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }} barGap={3} barSize={18}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} dy={8} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} dx={-5} tickFormatter={(val) => `${val}%`} />
-                    <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px'}} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                    <Bar dataKey="predicted" name="Predicted %" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="reported" name="Reported %" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Project Watchlist Table */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
-              <div className="mb-4">
-                <h3 className="text-base font-bold text-slate-900 leading-tight">Project Watchlist</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Ranked by AI risk score · predicted cost & schedule outcomes</p>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-xs text-slate-500 font-bold uppercase tracking-wider bg-slate-50/70">
-                      <th className="py-3 px-3">Project</th>
-                      <th className="py-3 px-3">Sector</th>
-                      <th className="py-3 px-3">Revised Cost</th>
-                      <th className="py-3 px-3">Physical Progress</th>
-                      <th className="py-3 px-3 text-right">Pred. Overrun</th>
-                      <th className="py-3 px-3 text-right">Pred. Delay</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm divide-y divide-slate-100">
-                    {filteredProjects.slice(0, 5).map((p, i) => (
-                      <tr key={i} className="hover:bg-slate-50/80 transition-colors cursor-pointer" onClick={() => onInspect && onInspect(p)}>
-                        <td className="py-3.5 px-3">
-                          <div className="font-bold text-slate-900 leading-snug">{p.name?.length > 35 ? p.name.substring(0, 35) + '...' : p.name}</div>
-                          <div className="text-xs font-mono text-slate-500 mt-0.5">{p.id}</div>
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/60">{p.sector}</span>
-                        </td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{p.outlay}</td>
-                        <td className="py-3.5 px-3 text-slate-700 font-medium">{p.progress || Math.floor(Math.random() * 40 + 40)}%</td>
-                        <td className="py-3.5 px-3 text-right">
-                          <span className="text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-100 text-xs inline-block">+{Math.floor(Math.random() * 30 + 10)}%</span>
-                        </td>
-                        <td className="py-3.5 px-3 text-right font-bold text-amber-700">{p.delayMonths || Math.floor(Math.random() * 24 + 6)} mo</td>
-                      </tr>
-                    ))}
-                    {filteredProjects.length === 0 && (
-                      <tr>
-                        <td colSpan="6" className="py-8 text-center text-slate-500 text-sm">No projects match your search criteria.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-          </div>
-
-          {/* Right Column */}
-          <div className="col-span-1 flex flex-col gap-6">
-            
-            {/* Cost Escalation Drivers */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm">
-              <div className="mb-5">
-                <h3 className="text-base font-bold text-slate-900 leading-tight">Cost Escalation Drivers</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Model-attributed contribution to overrun</p>
-              </div>
-              <div className="space-y-4">
-                {escalationDrivers.map((driver, idx) => (
-                  <div key={idx}>
-                    <div className="flex justify-between text-xs mb-1.5 font-medium">
-                      <span className="text-slate-700">{driver.name}</span>
-                      <span className="text-slate-900 font-bold">{driver.value}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${driver.value}%` }}></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Early Warning Alerts */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex-1">
-              <div className="mb-5">
-                <h3 className="text-base font-bold text-slate-900 leading-tight">Early Warning Alerts</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Signals from the risk engine</p>
-              </div>
-              <div className="space-y-4">
-                
-                <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0 border border-red-200 mt-0.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 leading-tight">Eastern Dedicated Freight Corridor — Ph II</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">Predicted cost overrun crossed 30% threshold</p>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-medium">
-                      <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Railways</span>
-                      <span>2h ago</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center shrink-0 border border-red-200 mt-0.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 leading-tight">Ken-Betwa Link Project</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">Milestone slippage — 3 consecutive cycles</p>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-medium">
-                      <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Water</span>
-                      <span>5h ago</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0 border border-amber-200 mt-0.5">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 leading-tight">Navi Mumbai Airport Access Rd</h4>
-                    <p className="text-xs text-slate-600 mt-0.5">Expenditure vs physical progress divergence</p>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-medium">
-                      <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Roads</span>
-                      <span>1d ago</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Risk Forewarning Active</span>
+            <strong className="text-slate-800 font-bold">186 Categorized</strong>
           </div>
         </div>
-        
+
       </div>
+
+      {/* ===== SECTOR BREAKDOWN & ESCALATION DRIVERS ===== */}
+      <div className="dashboard-grid-2">
+        
+        {/* Sector Cost Overrun (Bar Chart) */}
+        <div className="dashboard-card">
+          <div className="mb-4">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Sector-Wise Cost Overruns</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Reported vs model-predicted escalation %</p>
+          </div>
+
+          <div className="h-[240px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sectorData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={4} barSize={14}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} dy={6} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 11}} dx={-2} tickFormatter={(v) => `${v}%`} />
+                <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px'}} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                <Bar dataKey="predicted" name="Predicted Overrun %" fill="#ef4444" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="reported" name="Reported Overrun %" fill="#14b8a6" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Cost Escalation Drivers */}
+        <div className="dashboard-card flex flex-col justify-between">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Cost Escalation Drivers</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Model-attributed contribution factors</p>
+          </div>
+
+          <div className="space-y-3.5 my-3">
+            {escalationDrivers.map((driver, idx) => (
+              <div key={idx}>
+                <div className="flex justify-between text-xs mb-1 font-semibold text-slate-700">
+                  <span>{driver.name}</span>
+                  <span className="font-bold text-slate-900">{driver.value}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${driver.value}%`, backgroundColor: driver.color }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
+            <span>Primary Factor: Land Possession</span>
+            <Link to="/reports" className="text-sky-600 font-bold hover:underline">Detailed Audit &rarr;</Link>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ===== HIGH-PRIORITY PROJECT WATCHLIST TABLE ===== */}
+      <div className="dashboard-card space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Central Sector Watchlist</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Ranked by risk score, outlay, and delay timeline</p>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+            {/* Search Input (Flex Container for perfect icon placement in front of text) */}
+            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 min-w-[280px] sm:min-w-[320px] focus-within:border-sky-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-sky-500/10 transition-all">
+              <Search size={16} className="text-slate-400 shrink-0" />
+              <input 
+                type="text" 
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 outline-none border-none p-0 focus:ring-0"
+              />
+            </div>
+
+            {/* Sector Selector */}
+            <select
+              value={sectorFilter}
+              onChange={(e) => setSectorFilter(e.target.value)}
+              className="bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 px-4 py-2 outline-none focus:border-sky-500 cursor-pointer hover:bg-slate-100/80 transition-all"
+            >
+              {sectors.map((s, i) => (
+                <option key={i} value={s}>{s === 'All' ? 'All Sectors' : s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Data Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-[11px] text-slate-500 font-bold uppercase tracking-wider bg-slate-50/60">
+                <th className="py-3 px-4">Project &amp; ID</th>
+                <th className="py-3 px-4">Sector</th>
+                <th className="py-3 px-4">State</th>
+                <th className="py-3 px-4">Outlay</th>
+                <th className="py-3 px-4">Progress</th>
+                <th className="py-3 px-4 text-right">Risk Score</th>
+                <th className="py-3 px-4 text-right">Pred. Delay</th>
+                <th className="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="text-xs divide-y divide-slate-100">
+              {filteredProjects.map((p, i) => (
+                <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3.5 px-4">
+                    <div className="font-bold text-slate-900">{p.name}</div>
+                    <div className="text-[11px] text-slate-400">{p.id}</div>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60">
+                      {p.sector}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 text-slate-600">
+                    <span className="inline-flex items-center gap-1 font-medium"><MapPin size={12} className="text-slate-400" /> {p.state || 'Pan India'}</span>
+                  </td>
+                  <td className="py-3.5 px-4 font-bold text-slate-900">{p.outlay}</td>
+                  <td className="py-3.5 px-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-teal-500 rounded-full" style={{ width: `${p.progress || 65}%` }}></div>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-700">{p.progress || 65}%</span>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full border inline-block ${
+                      p.riskLevel === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                      p.riskLevel === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {p.riskLevel || 'Medium'} ({p.riskScore || 78})
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 text-right font-extrabold text-amber-700">
+                    +{p.delayMonths || 12} mo
+                  </td>
+                  <td className="py-3.5 px-4 text-center">
+                    <button 
+                      type="button" 
+                      onClick={() => onInspect && onInspect(p)}
+                      className="text-xs font-bold text-sky-600 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200/80 transition-all"
+                    >
+                      Inspect &rarr;
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filteredProjects.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="py-8 text-center text-slate-500 text-xs">
+                    No projects found matching filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ===== TELEMETRY & STATUTORY CLEARANCE (2-COLUMN GRID) ===== */}
+      <div className="dashboard-grid-2">
+        
+        {/* Early Warning Signals Feed */}
+        <div className="dashboard-card flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Early Warning Signals</h2>
+              <span className="bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200">
+                18 Active Risk Flags
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex gap-3.5">
+                <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={16} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Eastern Dedicated Freight Corridor</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Predicted cost overrun crossed 30% threshold due to land acquisition dispute.</p>
+                  <span className="text-[11px] font-bold text-red-600 mt-1 block">Railways • 15m ago</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex gap-3.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <ShieldAlert size={16} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Ken-Betwa Link Water Transfer</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Forest clearance pending for 3 consecutive quarterly cycles.</p>
+                  <span className="text-[11px] font-bold text-amber-700 mt-1 block">Water Resources • 2h ago</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex gap-3.5">
+                <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                  <Zap size={16} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Navi Mumbai Airport Link Expressway</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Expenditure vs physical progress divergence detected by AI engine.</p>
+                  <span className="text-[11px] font-bold text-sky-700 mt-1 block">Road Transport • 5h ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 mt-4 border-t border-slate-100 text-center">
+            <Link to="/reports" className="text-xs font-bold text-sky-600 hover:text-sky-800">
+              View All 18 Early Warning Risk Reports &rarr;
+            </Link>
+          </div>
+        </div>
+
+        {/* Clearance Bottleneck Tracker */}
+        <div className="dashboard-card flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Statutory Clearance Tracker</h2>
+              <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                96 Pending Sanctions
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {clearanceBottlenecks.map((item, idx) => (
+                <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="flex justify-between text-xs font-bold text-slate-900 mb-0.5">
+                    <span>{item.name}</span>
+                    <span className={item.risk === 'Critical' ? 'text-red-600 font-extrabold' : 'text-amber-600 font-bold'}>{item.pending} Pending</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500">
+                    <span>Processing Latency:</span>
+                    <strong className="text-slate-700 font-bold">{item.avgDays}</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-3 mt-4 border-t border-slate-100 text-center">
+            <Link to="/reports" className="text-xs font-bold text-sky-600 hover:text-sky-800">
+              Download Statutory Clearance Audit &rarr;
+            </Link>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ===== SIMPLE MINIMAL AI ENGINES QUICK LAUNCHER ===== */}
+      <div className="dashboard-banner flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div>
+          <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            <Cpu size={16} className="text-sky-600" /> NIVARA AI Predictive Engines
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Run delay simulations, audit funding mismatches, and classify contractor reports.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link to="/risk-intelligence" className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-xs">
+            Delay Simulator &rarr;
+          </Link>
+          <Link to="/risk-intelligence" className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-xs">
+            Fund Mismatch Detector &rarr;
+          </Link>
+          <Link to="/risk-intelligence" className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-xs">
+            NLP Delay Classifier &rarr;
+          </Link>
+        </div>
+      </div>
+
     </div>
   );
 };
