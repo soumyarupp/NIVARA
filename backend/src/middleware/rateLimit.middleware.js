@@ -2,33 +2,24 @@ import rateLimit from 'express-rate-limit';
 import { sendError } from '../utils/response.js';
 import { env } from '../config/env.js';
 
-/**
- * Strict Rate Limiter for Authentication Endpoints (Login, Forgot Password)
- * Prevents brute-force credential stuffing and password reset spam.
- */
-export const authRateLimiter = env.NODE_ENV === 'test'
-  ? (req, res, next) => next()
-  : rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 10, // Limit each IP to 10 requests per window
-      standardHeaders: true,
-      legacyHeaders: false,
-      handler: (req, res) => {
-        return sendError(
-          res,
-          'Too many authentication requests from this IP. Please try again after 15 minutes.',
-          [],
-          429
-        );
-      }
-    });
+const authLimiterInstance = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    return sendError(
+      res,
+      'Too many authentication requests from this IP. Please try again after 15 minutes.',
+      [],
+      429
+    );
+  }
+});
 
-/**
- * General API Rate Limiter
- */
-export const generalApiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // Limit each IP to 300 requests per window
+const generalLimiterInstance = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -40,3 +31,23 @@ export const generalApiLimiter = rateLimit({
     );
   }
 });
+
+/**
+ * Strict Rate Limiter for Authentication Endpoints
+ */
+export const authRateLimiter = (req, res, next) => {
+  if (process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test') {
+    return next();
+  }
+  return authLimiterInstance(req, res, next);
+};
+
+/**
+ * General API Rate Limiter
+ */
+export const generalApiLimiter = (req, res, next) => {
+  if (process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test') {
+    return next();
+  }
+  return generalLimiterInstance(req, res, next);
+};

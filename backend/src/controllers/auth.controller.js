@@ -176,7 +176,10 @@ export const getActivationPage = async (req, res, next) => {
                 alertBox.style.display = 'block';
               } else {
                 alertBox.className = 'alert alert-error';
-                alertBox.innerText = data.message || 'Activation failed.';
+                const errMsg = (data.errors && data.errors.length > 0)
+                  ? data.errors.map(e => e.message).join('<br>')
+                  : (data.message || 'Activation failed.');
+                alertBox.innerHTML = errMsg;
                 alertBox.style.display = 'block';
                 submitBtn.disabled = false;
                 submitBtn.innerText = 'Activate Account & Set Password';

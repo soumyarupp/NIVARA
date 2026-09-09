@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import routes from './routes/index.js';
 import { generalApiLimiter } from './middleware/rateLimit.middleware.js';
 import { errorHandler } from './middleware/error.middleware.js';
@@ -13,7 +14,7 @@ const app = express();
 // Security Headers
 app.use(
   helmet({
-    contentSecurityPolicy: false // Allows API to serve flexibly in cross-origin SPA setups
+    contentSecurityPolicy: false
   })
 );
 
@@ -21,7 +22,6 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, postman) or matching FRONTEND_URL
       if (!origin || origin === env.FRONTEND_URL || env.NODE_ENV !== 'production') {
         callback(null, true);
       } else {
@@ -34,12 +34,15 @@ app.use(
   })
 );
 
-// Parse JSON & URL-encoded payloads
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// Parse JSON & URL-encoded payloads with 50mb capacity
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Parse Cookies
 app.use(cookieParser());
+
+// Serve Static Uploaded Files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Apply global rate limiting to all endpoints except in test mode
 if (env.NODE_ENV !== 'test') {

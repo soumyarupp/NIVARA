@@ -53,8 +53,11 @@ const getTransporter = async () => {
  */
 export const sendInvitationEmail = async ({ to, fullName, role, organizationName, rawToken }) => {
   const mailer = await getTransporter();
-  const directActivationUrl = `http://localhost:${env.PORT}/api/auth/activate?token=${rawToken}`;
-  const activationUrl = env.FRONTEND_URL ? `${env.FRONTEND_URL}/activate?token=${rawToken}` : directActivationUrl;
+  const directActivationUrl = `http://localhost:${env.PORT}/api/auth/activate?token=${encodeURIComponent(rawToken)}`;
+  const isPlaceholderFrontend = !env.FRONTEND_URL || env.FRONTEND_URL === 'http://localhost:5001';
+  const activationUrl = isPlaceholderFrontend
+    ? directActivationUrl
+    : `${env.FRONTEND_URL}/activate?token=${encodeURIComponent(rawToken)}`;
 
   const html = `
     <!DOCTYPE html>
@@ -138,7 +141,11 @@ export const sendInvitationEmail = async ({ to, fullName, role, organizationName
  */
 export const sendPasswordResetEmail = async ({ to, fullName, rawToken }) => {
   const mailer = await getTransporter();
-  const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+  const directResetUrl = `http://localhost:${env.PORT}/api/auth/reset-password?token=${encodeURIComponent(rawToken)}`;
+  const isPlaceholderFrontend = !env.FRONTEND_URL || env.FRONTEND_URL === 'http://localhost:3000';
+  const resetUrl = isPlaceholderFrontend
+    ? directResetUrl
+    : `${env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
   const html = `
     <!DOCTYPE html>
@@ -196,3 +203,78 @@ export const sendPasswordResetEmail = async ({ to, fullName, rawToken }) => {
 
   return info;
 };
+
+/**
+ * Send High/Critical Risk Early Warning Alert Email
+ */
+export const sendAlertNotificationEmail = async ({
+  to,
+  recipientName = 'Officer',
+  projectTitle = 'Infrastructure Project',
+  alertTitle = 'Risk Alert',
+  alertMessage = '',
+  severity = 'HIGH',
+  riskScore = 0
+}) => {
+  try {
+    const mailer = await getTransporter();
+    const severityColor = severity === 'CRITICAL' ? '#991b1b' : '#c2410c';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #0f172a; }
+          .container { max-width: 600px; margin: 24px auto; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; }
+          .header { background: #0f172a; color: #ffffff; padding: 20px 24px; }
+          .badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; color: #ffffff; background: ${severityColor}; }
+          .content { padding: 24px; }
+          .card { background: #f8fafc; border-left: 4px solid ${severityColor}; padding: 16px; margin: 16px 0; border-radius: 0 6px 6px 0; }
+          .footer { background: #f1f5f9; padding: 16px 24px; font-size: 12px; color: #64748b; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2 style="margin: 0;">🏛️ NIVARA Early Warning System</h2>
+            <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 13px;">MoSPI / IPMD Project Monitoring Infrastructure</p>
+          </div>
+          <div class="content">
+            <span class="badge">${severity} RISK ALERT</span>
+            <h3 style="margin: 12px 0 6px 0;">${alertTitle}</h3>
+            <p style="color: #475569; font-size: 14px;"><strong>Project:</strong> ${projectTitle}</p>
+            <p style="color: #475569; font-size: 14px;"><strong>Calculated Risk Score:</strong> ${riskScore} / 100</p>
+            
+            <div class="card">
+              <p style="margin: 0; font-size: 14px; line-height: 1.5;">${alertMessage}</p>
+            </div>
+
+            <p style="font-size: 13px; color: #64748b;">
+              Dear <strong>${recipientName}</strong>, as the assigned Nodal / Ministry Officer, please review this issue on the NIVARA Dashboard and coordinate necessary remediation steps.
+            </p>
+          </div>
+          <div class="footer">
+            <p style="margin: 0;">This is an automated system notification from the NIVARA Project Monitoring Platform.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const info = await mailer.sendMail({
+      from: env.MAIL_FROM,
+      to,
+      subject: `[NIVARA ${severity} ALERT] ${projectTitle}: ${alertTitle}`,
+      text: `NIVARA ALERT [${severity}]\nProject: ${projectTitle}\nRisk Score: ${riskScore}\n\n${alertTitle}\n${alertMessage}\n\nPlease review on NIVARA portal.`,
+      html
+    });
+
+    return info;
+  } catch (err) {
+    console.error(`⚠️ Failed to dispatch alert email to ${to}:`, err.message);
+    return null;
+  }
+};
+

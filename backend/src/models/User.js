@@ -1,9 +1,12 @@
 import mongoose from 'mongoose';
 
 export const USER_ROLES = [
+  'SUPER_ADMIN',
   'IPMD_ADMIN',
-  'MINISTRY_ADMIN',
-  'AGENCY_ADMIN',
+  'MINISTRY_OFFICER',
+  'MINISTRY_ADMIN', // Compatibility alias for MINISTRY_OFFICER
+  'IMPLEMENTATION_AGENCY',
+  'AGENCY_ADMIN', // Compatibility alias for IMPLEMENTATION_AGENCY
   'NODAL_OFFICER',
   'REPORTING_OFFICER'
 ];
@@ -17,39 +20,64 @@ export const USER_STATUSES = [
 
 const userSchema = new mongoose.Schema(
   {
-    fullName: {
+    name: {
       type: String,
-      required: [true, 'Full name is required'],
       trim: true,
       maxlength: 120
     },
-    officialEmail: {
+    fullName: {
       type: String,
-      required: [true, 'Official email is required'],
-      unique: true,
+      trim: true,
+      maxlength: 120
+    },
+    email: {
+      type: String,
       lowercase: true,
       trim: true,
       index: true
     },
+    officialEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      index: true
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     mobileNumber: {
       type: String,
-      required: [true, 'Mobile number is required'],
-      trim: true
+      trim: true,
+      default: ''
     },
     designation: {
       type: String,
-      required: [true, 'Designation is required'],
-      trim: true
+      trim: true,
+      default: ''
     },
     employeeId: {
       type: String,
-      required: [true, 'Employee ID is required'],
-      trim: true
+      trim: true,
+      default: ''
     },
     department: {
       type: String,
-      required: [true, 'Department is required'],
-      trim: true
+      trim: true,
+      default: ''
+    },
+    ministryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Ministry',
+      default: null,
+      index: true
+    },
+    agencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ImplementationAgency',
+      default: null,
+      index: true
     },
     organizationId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -72,10 +100,19 @@ const userSchema = new mongoose.Schema(
         ref: 'Project'
       }
     ],
+    password: {
+      type: String,
+      select: false,
+      default: null
+    },
     passwordHash: {
       type: String,
       select: false,
       default: null
+    },
+    isActive: {
+      type: Boolean,
+      default: true
     },
     status: {
       type: String,
@@ -83,12 +120,12 @@ const userSchema = new mongoose.Schema(
         values: USER_STATUSES,
         message: '{VALUE} is not a valid status'
       },
-      default: 'INVITED',
+      default: 'ACTIVE',
       index: true
     },
     emailVerified: {
       type: Boolean,
-      default: false
+      default: true
     },
     invitationTokenHash: {
       type: String,
@@ -125,7 +162,20 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Compound indexes for optimal queries
+// Pre-save hook to ensure name/fullName and email/officialEmail syncing
+userSchema.pre('save', function (next) {
+  if (this.name && !this.fullName) this.fullName = this.name;
+  if (this.fullName && !this.name) this.name = this.fullName;
+  if (this.email && !this.officialEmail) this.officialEmail = this.email;
+  if (this.officialEmail && !this.email) this.email = this.officialEmail;
+  if (this.phone && !this.mobileNumber) this.mobileNumber = this.phone;
+  if (this.mobileNumber && !this.phone) this.phone = this.mobileNumber;
+  next();
+});
+
+// Compound indexes
+userSchema.index({ ministryId: 1, role: 1 });
+userSchema.index({ agencyId: 1, role: 1 });
 userSchema.index({ organizationId: 1, role: 1 });
 userSchema.index({ status: 1, role: 1 });
 
