@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './Dashboard.css';
 import { 
   BarChart3, 
@@ -31,13 +31,15 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [overview, setOverview] = useState(null);
+  const [delayReasons, setDelayReasons] = useState([]);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const [projRes, overRes] = await Promise.allSettled([
+      const [projRes, overRes, delRes] = await Promise.allSettled([
         projectApi.getProjects({ limit: 100 }),
-        dashboardApi.getOverview()
+        dashboardApi.getOverview(),
+        dashboardApi.getDelayReasons()
       ]);
 
       if (projRes.status === 'fulfilled') {
@@ -45,7 +47,11 @@ export default function AnalyticsPage() {
         setProjects(Array.isArray(p) ? p : (p.projects || []));
       }
       if (overRes.status === 'fulfilled') {
-        setOverview(overRes.value);
+        setOverview(overRes.value?.data || overRes.value);
+      }
+      if (delRes.status === 'fulfilled') {
+        const dData = delRes.value?.data || delRes.value || [];
+        setDelayReasons(Array.isArray(dData) ? dData : []);
       }
     } catch (err) {
       console.error('Failed to load analytics:', err);
@@ -70,7 +76,8 @@ export default function AnalyticsPage() {
   const stateCounts = {};
   projects.forEach(p => {
     const st = p.state || (p.location && p.location.state) || 'Central';
-    stateCounts[st] = (stateCounts[st] || 0) + (p.sanctionedCost || p.budget?.sanctionedCost || 500);
+    const cost = Number(p.originalProjectCost || p.sanctionedCost || p.budget?.sanctionedCost || 500);
+    stateCounts[st] = (stateCounts[st] || 0) + cost;
   });
   const stateData = Object.entries(stateCounts)
     .sort((a, b) => b[1] - a[1])
@@ -79,8 +86,8 @@ export default function AnalyticsPage() {
 
   // Compute Progress Gap distribution
   const progressGapData = projects.slice(0, 8).map(p => {
-    const phys = p.physicalProgress?.overallPercentage ?? p.progress?.physicalProgress ?? p.physicalProgress ?? 50;
-    const fin = p.financialProgress?.percentageSpent ?? p.progress?.financialProgress ?? p.financialProgress ?? 45;
+    const phys = Math.round(p.physicalProgress?.overallPercentage ?? p.progress?.physicalProgress ?? p.physicalProgress ?? 50);
+    const fin = Math.round(p.financialProgress?.percentageSpent ?? p.progress?.financialProgress ?? p.financialProgress ?? 45);
     return {
       name: (p.name || p.projectName || 'Project').substring(0, 15) + '...',
       Physical: phys,
@@ -90,13 +97,23 @@ export default function AnalyticsPage() {
   });
 
   // Delay Root Causes Distribution
-  const delayCausesData = [
-    { name: 'Land Acquisition & Right of Way', value: 38 },
-    { name: 'Forest & Environmental Clearances', value: 24 },
-    { name: 'Utility Shifting (Power/Water)', value: 16 },
-    { name: 'Contractor Financial Liquidity', value: 12 },
-    { name: 'Monsoon & Geological Surprises', value: 10 },
-  ];
+  const delayCausesData = useMemo(() => {
+    if (delayReasons.length > 0) {
+      const total = delayReasons.reduce((acc, r) => acc + (r.count || 1), 0) || 1;
+      return delayReasons.slice(0, 5).map(r => {
+        const pct = Math.round((r.count / total) * 100);
+        const name = r._id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+        return { name, value: pct || 20 };
+      });
+    }
+    return [
+      { name: 'Land Acquisition & Right of Way', value: 38 },
+      { name: 'Forest & Environmental Clearances', value: 24 },
+      { name: 'Utility Shifting (Power/Water)', value: 16 },
+      { name: 'Contractor Financial Liquidity', value: 12 },
+      { name: 'Monsoon & Geological Surprises', value: 10 },
+    ];
+  }, [delayReasons]);
 
   return (
     <div className={`admin-app-wrapper ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>

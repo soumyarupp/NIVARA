@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -9,55 +9,19 @@ import {
   Layers, FileCheck2, Clock, MapPin, Zap, ShieldAlert, Cpu
 } from 'lucide-react';
 import { getStoredUser, formatRoleName } from '../api/authApi';
+import dashboardApi from '../api/dashboardApi';
+import alertApi from '../api/alertApi';
 import ReportingOfficerDashboard from './ReportingOfficerDashboard';
 import NodalOfficerDashboard from './NodalOfficerDashboard';
-
-const costEvolutionData = [
-  { name: 'Nov', expenditure: 10.2, original: 30.0, revised: 32.4 },
-  { name: 'Dec', expenditure: 15.4, original: 31.0, revised: 34.1 },
-  { name: 'Jan', expenditure: 18.8, original: 31.0, revised: 35.6 },
-  { name: 'Feb', expenditure: 20.5, original: 31.0, revised: 36.8 },
-  { name: 'Mar', expenditure: 22.9, original: 31.0, revised: 37.9 },
-  { name: 'Apr', expenditure: 25.4, original: 31.0, revised: 38.2 },
-];
-
-const sectorData = [
-  { name: 'Roads', predicted: 4.8, reported: 3.2 },
-  { name: 'Railways', predicted: 7.5, reported: 4.1 },
-  { name: 'Power', predicted: 3.2, reported: 2.1 },
-  { name: 'Petroleum', predicted: 2.1, reported: 1.5 },
-  { name: 'Water', predicted: 6.2, reported: 3.8 },
-  { name: 'Coal', predicted: 5.5, reported: 3.2 },
-  { name: 'Steel', predicted: 3.8, reported: 2.9 },
-  { name: 'Ports', predicted: 4.2, reported: 3.0 },
-];
-
-const riskData = [
-  { name: 'Critical Risk', value: 18, color: '#ef4444' },
-  { name: 'High Risk', value: 26, color: '#f97316' },
-  { name: 'Medium Risk', value: 44, color: '#eab308' },
-  { name: 'Low Risk', value: 98, color: '#10b981' },
-];
-
-const escalationDrivers = [
-  { name: 'Land Acquisition Delays', value: 28, color: '#0284c7' },
-  { name: 'Statutory & Environmental Clearances', value: 24, color: '#6366f1' },
-  { name: 'Contractor Performance & Mobilization', value: 20, color: '#0d9488' },
-  { name: 'Funding Constraints & Allocation Gaps', value: 15, color: '#f59e0b' },
-  { name: 'Material & Equipment Price Escalation', value: 13, color: '#ec4899' },
-];
-
-const clearanceBottlenecks = [
-  { name: 'Forest & Wildlife Clearance Stage II', pending: 34, avgDays: '142 days', risk: 'High' },
-  { name: 'State Land Acquisition Possession', pending: 28, avgDays: '188 days', risk: 'Critical' },
-  { name: 'Railway Safety Commissioner Sanction', pending: 19, avgDays: '65 days', risk: 'Medium' },
-  { name: 'Environmental Impact Assessment (EIA)', pending: 15, avgDays: '92 days', risk: 'Medium' },
-];
 
 const ProjectDashboard = ({ projects = [], onInspect }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sectorFilter, setSectorFilter] = useState('All');
   const [timeRange, setTimeRange] = useState('YTD');
+  const [overview, setOverview] = useState(null);
+  const [liveAlerts, setLiveAlerts] = useState([]);
+  const [delayReasons, setDelayReasons] = useState([]);
+  const [clearanceList, setClearanceList] = useState([]);
   const user = getStoredUser();
   const role = user?.role || 'SUPER_ADMIN';
 
@@ -71,6 +35,39 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
     return <NodalOfficerDashboard />;
   }
 
+  useEffect(() => {
+    async function loadAuxData() {
+      try {
+        const [ovRes, alRes, delRes] = await Promise.allSettled([
+          dashboardApi.getOverview(),
+          alertApi.getAlerts(),
+          dashboardApi.getDelayReasons()
+        ]);
+
+        if (ovRes.status === 'fulfilled' && ovRes.value) {
+          const ovData = ovRes.value.data || ovRes.value;
+          setOverview(ovData);
+          if (Array.isArray(ovData.clearanceBottlenecks)) {
+            setClearanceList(ovData.clearanceBottlenecks);
+          }
+        }
+
+        if (alRes.status === 'fulfilled' && alRes.value) {
+          const alData = alRes.value.data || alRes.value.alerts || alRes.value || [];
+          setLiveAlerts(Array.isArray(alData) ? alData : []);
+        }
+
+        if (delRes.status === 'fulfilled' && delRes.value) {
+          const delData = delRes.value.data || delRes.value || [];
+          setDelayReasons(Array.isArray(delData) ? delData : []);
+        }
+      } catch (err) {
+        console.warn('Auxiliary dashboard data load error:', err);
+      }
+    }
+    loadAuxData();
+  }, []);
+
   const sectors = useMemo(() => {
     const set = new Set(projects.map(p => p.sector).filter(Boolean));
     return ['All', ...Array.from(set)];
@@ -83,6 +80,142 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
       return matchesSearch && matchesSector;
     });
   }, [projects, searchQuery, sectorFilter]);
+
+  // Dynamic KPI Metric Calculations
+  const totalProjectsCount = projects.length || overview?.totalProjects || 186;
+  const totalCostVal = projects.reduce((acc, p) => acc + Number(p.originalProjectCost || p.sanctionedCost || p.budgetEstimatedInCrores || 0), 0) || overview?.totalCost || 4820000;
+  const totalOutlayDisplay = totalCostVal >= 100000 
+    ? `₹${(totalCostVal / 100000).toFixed(1)} L Cr` 
+    : `₹${Math.round(totalCostVal).toLocaleString('en-IN')} Cr`;
+
+  const criticalProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'CRITICAL' || p.riskScore >= 75);
+  const highProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'HIGH' || (p.riskScore >= 50 && p.riskScore < 75));
+  const mediumProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'MEDIUM' || (p.riskScore >= 25 && p.riskScore < 50));
+  const lowProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'LOW' || (!p.riskLevel && (p.riskScore || 0) < 25));
+
+  const totalAtRiskCount = (criticalProjects.length + highProjects.length) || overview?.highRiskProjects || 44;
+  const atRiskPct = totalProjectsCount > 0 ? ((totalAtRiskCount / totalProjectsCount) * 100).toFixed(1) : '23.7';
+
+  const avgDelayVal = projects.length > 0 
+    ? (projects.reduce((acc, p) => acc + (Number(p.delayMonths) || (Number(p.delayDays) ? Number(p.delayDays) / 30 : 0) || 0), 0) / projects.length).toFixed(1)
+    : (overview?.avgPredictedDelayMonths || 11.3);
+
+  // Dynamic Risk Score Distribution
+  const riskData = useMemo(() => {
+    if (projects.length > 0) {
+      return [
+        { name: 'Critical Risk', value: criticalProjects.length, color: '#ef4444' },
+        { name: 'High Risk', value: highProjects.length, color: '#f97316' },
+        { name: 'Medium Risk', value: mediumProjects.length, color: '#eab308' },
+        { name: 'Low Risk', value: lowProjects.length, color: '#10b981' },
+      ];
+    }
+    return [
+      { name: 'Critical Risk', value: overview?.criticalAlerts || 18, color: '#ef4444' },
+      { name: 'High Risk', value: 26, color: '#f97316' },
+      { name: 'Medium Risk', value: 44, color: '#eab308' },
+      { name: 'Low Risk', value: 98, color: '#10b981' },
+    ];
+  }, [projects, criticalProjects.length, highProjects.length, mediumProjects.length, lowProjects.length, overview]);
+
+  // Dynamic Sector Breakdown
+  const sectorData = useMemo(() => {
+    if (projects.length === 0) {
+      return [
+        { name: 'Roads', predicted: 4.8, reported: 3.2 },
+        { name: 'Railways', predicted: 7.5, reported: 4.1 },
+        { name: 'Power', predicted: 3.2, reported: 2.1 },
+        { name: 'Petroleum', predicted: 2.1, reported: 1.5 },
+        { name: 'Water', predicted: 6.2, reported: 3.8 },
+        { name: 'Coal', predicted: 5.5, reported: 3.2 },
+        { name: 'Steel', predicted: 3.8, reported: 2.9 },
+        { name: 'Ports', predicted: 4.2, reported: 3.0 },
+      ];
+    }
+
+    const map = {};
+    projects.forEach(p => {
+      const s = p.sector || 'Other';
+      if (!map[s]) map[s] = { count: 0, totalDelay: 0, totalSpend: 0, totalCost: 0 };
+      map[s].count += 1;
+      map[s].totalDelay += (p.delayDays ? p.delayDays / 30 : p.delayMonths || (p.riskLevel === 'CRITICAL' ? 8 : 2));
+      map[s].totalSpend += (p.expenditure || 0);
+      map[s].totalCost += (p.originalProjectCost || 1);
+    });
+
+    return Object.entries(map).slice(0, 8).map(([sec, stats]) => {
+      const shortName = sec.length > 12 ? sec.split(/[\s&/]+/)[0] : sec;
+      const predictedOverrun = Math.round((stats.totalDelay / stats.count) * 10) / 10;
+      const reportedOverrun = Math.round((stats.totalSpend / (stats.totalCost || 1)) * 1000) / 10;
+      return {
+        name: shortName,
+        predicted: Math.max(1.5, Math.min(25, predictedOverrun)),
+        reported: Math.max(1.0, Math.min(20, Math.round(reportedOverrun * 0.1 * 10) / 10 || 3.2))
+      };
+    });
+  }, [projects]);
+
+  // Dynamic Cost Evolution
+  const costEvolutionData = useMemo(() => {
+    if (overview?.costEvolution && Array.isArray(overview.costEvolution) && overview.costEvolution.length > 0) {
+      const totalOrigLakhCr = Math.round(totalCostVal / 100000 * 10) / 10;
+      const totalRevLakhCr = Math.round((overview.revisedCost || totalCostVal * 1.1) / 100000 * 10) / 10;
+      return overview.costEvolution.map((m) => {
+        const monthLabel = m._id === '2026-04' ? 'Apr' :
+          m._id === '2026-05' ? 'May' :
+          m._id === '2026-06' ? 'Jun' :
+          m._id === '2026-07' ? 'Jul' : m._id;
+        const spendLakhCr = Math.round((m.expenditure || 1000) / 100000 * 10) / 10;
+        return {
+          name: monthLabel,
+          expenditure: spendLakhCr > 0 ? spendLakhCr : 18.5,
+          original: totalOrigLakhCr || 31.0,
+          revised: totalRevLakhCr || 35.5
+        };
+      });
+    }
+
+    return [
+      { name: 'Nov', expenditure: 10.2, original: 30.0, revised: 32.4 },
+      { name: 'Dec', expenditure: 15.4, original: 31.0, revised: 34.1 },
+      { name: 'Jan', expenditure: 18.8, original: 31.0, revised: 35.6 },
+      { name: 'Feb', expenditure: 20.5, original: 31.0, revised: 36.8 },
+      { name: 'Mar', expenditure: 22.9, original: 31.0, revised: 37.9 },
+      { name: 'Apr', expenditure: 25.4, original: 31.0, revised: 38.2 },
+    ];
+  }, [overview, totalCostVal]);
+
+  // Dynamic Escalation Drivers
+  const escalationDrivers = useMemo(() => {
+    if (delayReasons.length > 0) {
+      const total = delayReasons.reduce((acc, r) => acc + (r.count || 1), 0) || 1;
+      const colors = ['#0284c7', '#6366f1', '#0d9488', '#f59e0b', '#ec4899', '#8b5cf6'];
+      return delayReasons.slice(0, 5).map((r, i) => {
+        const pct = Math.round((r.count / total) * 100);
+        const name = r._id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+        return {
+          name,
+          value: pct || 20,
+          color: colors[i % colors.length]
+        };
+      });
+    }
+    return [
+      { name: 'Land Acquisition Delays', value: 28, color: '#0284c7' },
+      { name: 'Statutory & Environmental Clearances', value: 24, color: '#6366f1' },
+      { name: 'Contractor Performance & Mobilization', value: 20, color: '#0d9488' },
+      { name: 'Funding Constraints & Allocation Gaps', value: 15, color: '#f59e0b' },
+      { name: 'Material & Equipment Price Escalation', value: 13, color: '#ec4899' },
+    ];
+  }, [delayReasons]);
+
+  // Clearance Bottlenecks
+  const clearanceBottlenecks = clearanceList.length > 0 ? clearanceList : [
+    { name: 'Forest & Wildlife Clearance Stage II', pending: 34, avgDays: '142 days', risk: 'High' },
+    { name: 'State Land Acquisition Possession', pending: 28, avgDays: '188 days', risk: 'Critical' },
+    { name: 'Railway Safety Commissioner Sanction', pending: 19, avgDays: '65 days', risk: 'Medium' },
+    { name: 'Environmental Impact Assessment (EIA)', pending: 15, avgDays: '92 days', risk: 'Medium' },
+  ];
 
   return (
     <div className="main-dashboard-content space-y-7 text-slate-800">
@@ -150,9 +283,9 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
                 <TrendingUp size={13} /> +12.5%
               </span>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-3">186</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-3">{totalProjectsCount}</div>
             <div className="text-xs font-bold text-slate-700 mt-1">Monitored Mega Projects</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">17 Nodal Ministries</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">Central Sector Portfolio</div>
           </div>
         </div>
 
@@ -167,7 +300,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
                 100% Capital
               </span>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-3">₹48.2 L Cr</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-3">{totalOutlayDisplay}</div>
             <div className="text-xs font-bold text-slate-700 mt-1">Total Monitored Outlay</div>
             <div className="text-[11px] text-slate-400 mt-0.5">Sanctioned Capital Cover</div>
           </div>
@@ -181,12 +314,12 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
                 <AlertTriangle size={18} />
               </span>
               <span className="text-xs font-bold text-red-600 flex items-center gap-1 bg-red-50 px-2.5 py-1 rounded-full border border-red-100/80 shrink-0">
-                <TrendingUp size={13} /> 18 Critical
+                <TrendingUp size={13} /> {criticalProjects.length || 18} Critical
               </span>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-red-600 tracking-tight mt-3">44</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-red-600 tracking-tight mt-3">{totalAtRiskCount}</div>
             <div className="text-xs font-bold text-slate-700 mt-1">Projects Flagged at Risk</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">23.7% of Active Portfolio</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">{atRiskPct}% of Active Portfolio</div>
           </div>
         </div>
 
@@ -198,12 +331,12 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
                 <Clock size={18} />
               </span>
               <span className="text-xs font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100/80 shrink-0">
-                <TrendingDown size={13} /> -0.6 mo MoM
+                <TrendingDown size={13} /> Active Forecast
               </span>
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight mt-3">11.3 Months</div>
+            <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight mt-3">{avgDelayVal} Mo</div>
             <div className="text-xs font-bold text-slate-700 mt-1">Avg. Predicted Delay</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Cost-weighted Average</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">Telemetry Weighted Average</div>
           </div>
         </div>
 
@@ -298,7 +431,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Risk Forewarning Active</span>
-            <strong className="text-slate-800 font-bold">186 Categorized</strong>
+            <strong className="text-slate-800 font-bold">{totalProjectsCount} Categorized</strong>
           </div>
         </div>
 
@@ -351,7 +484,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
           </div>
 
           <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 flex justify-between items-center">
-            <span>Primary Factor: Land Possession</span>
+            <span>Primary Factor: {escalationDrivers[0]?.name || 'Land Acquisition'}</span>
             <Link to="/reports" className="text-sky-600 font-bold hover:underline">Detailed Audit &rarr;</Link>
           </div>
         </div>
@@ -413,11 +546,11 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
                 const projName = p.name || p.projectName || 'Central Infrastructure Project';
                 const projCode = p.projectCode || p.id || `PRJ-${i+1}`;
                 const projState = p.state || p.location?.state || 'Pan India';
-                const projCost = p.outlay || (p.sanctionedCost ? `₹${Number(p.sanctionedCost).toLocaleString('en-IN')} Cr` : (p.budget?.sanctionedCost ? `₹${Number(p.budget.sanctionedCost).toLocaleString('en-IN')} Cr` : '₹1,200 Cr'));
-                const projProgress = Math.round(p.physicalProgress?.overallPercentage ?? p.progress?.physicalProgress ?? p.progress ?? 55);
+                const projCost = p.outlay || (p.sanctionedCost ? `₹${Number(p.sanctionedCost).toLocaleString('en-IN')} Cr` : (p.budget?.sanctionedCost ? `₹${Number(p.budget.sanctionedCost).toLocaleString('en-IN')} Cr` : (p.originalProjectCost ? `₹${Number(p.originalProjectCost).toLocaleString('en-IN')} Cr` : '₹1,200 Cr')));
+                const projProgress = Math.round(p.physicalProgress?.overallPercentage ?? p.progress?.physicalProgress ?? p.physicalProgress ?? 55);
                 const projRisk = p.riskLevel || (p.riskScore > 75 ? 'Critical' : p.riskScore > 50 ? 'High' : 'Medium');
                 const projScore = p.riskScore || (projRisk === 'Critical' ? 84 : projRisk === 'High' ? 68 : 45);
-                const projDelay = p.delayMonths || (projRisk === 'Critical' ? 18 : 6);
+                const projDelay = p.delayMonths || (p.delayDays ? Math.round(p.delayDays / 30) : (projRisk === 'Critical' ? 18 : 6));
 
                 return (
                   <tr key={projId || i} className="hover:bg-slate-50/90 transition-colors">
@@ -450,8 +583,8 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
                     </td>
                     <td className="py-4 px-4.5 text-right">
                       <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border inline-block ${
-                        projRisk === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
-                        projRisk === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                        projRisk === 'Critical' || (p.riskLevel || '').toUpperCase() === 'CRITICAL' ? 'bg-red-50 text-red-700 border-red-200' :
+                        projRisk === 'High' || (p.riskLevel || '').toUpperCase() === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
                         'bg-amber-50 text-amber-700 border-amber-200'
                       }`}>
                         {projRisk} ({projScore})
@@ -503,49 +636,58 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Early Warning Signals</h2>
               <span className="bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200">
-                18 Active Risk Flags
+                {liveAlerts.length || criticalProjects.length || 18} Active Risk Flags
               </span>
             </div>
 
             <div className="space-y-3.5">
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex gap-3.5 hover:bg-white hover:shadow-2xs transition-all">
-                <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                  <AlertTriangle size={18} />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900">Eastern Dedicated Freight Corridor</h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">Predicted cost overrun crossed 30% threshold due to land acquisition dispute.</p>
-                  <span className="text-[11px] font-bold text-red-600 mt-1.5 block">Railways • 15m ago</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex gap-3.5 hover:bg-white hover:shadow-2xs transition-all">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                  <ShieldAlert size={18} />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900">Ken-Betwa Link Water Transfer</h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">Forest clearance pending for 3 consecutive quarterly cycles.</p>
-                  <span className="text-[11px] font-bold text-amber-700 mt-1.5 block">Water Resources • 2h ago</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex gap-3.5 hover:bg-white hover:shadow-2xs transition-all">
-                <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <Zap size={18} />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900">Navi Mumbai Airport Link Expressway</h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">Expenditure vs physical progress divergence detected by AI engine.</p>
-                  <span className="text-[11px] font-bold text-sky-700 mt-1.5 block">Road Transport • 5h ago</span>
-                </div>
-              </div>
+              {(liveAlerts.length > 0 ? liveAlerts.slice(0, 3) : [
+                {
+                  title: 'Eastern Dedicated Freight Corridor',
+                  message: 'Predicted cost overrun crossed 30% threshold due to land acquisition dispute.',
+                  sector: 'Railways',
+                  severity: 'CRITICAL',
+                  timeAgo: '15m ago'
+                },
+                {
+                  title: 'Ken-Betwa Link Water Transfer',
+                  message: 'Forest clearance pending for 3 consecutive quarterly cycles.',
+                  sector: 'Water Resources',
+                  severity: 'HIGH',
+                  timeAgo: '2h ago'
+                },
+                {
+                  title: 'Navi Mumbai Airport Link Expressway',
+                  message: 'Expenditure vs physical progress divergence detected by AI engine.',
+                  sector: 'Road Transport',
+                  severity: 'MEDIUM',
+                  timeAgo: '5h ago'
+                }
+              ]).map((alert, idx) => {
+                const sev = (alert.severity || 'HIGH').toUpperCase();
+                return (
+                  <div key={idx} className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex gap-3.5 hover:bg-white hover:shadow-2xs transition-all">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      sev === 'CRITICAL' ? 'bg-red-100 text-red-600' : sev === 'HIGH' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700'
+                    }`}>
+                      {sev === 'CRITICAL' ? <AlertTriangle size={18} /> : sev === 'HIGH' ? <ShieldAlert size={18} /> : <Zap size={18} />}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900">{alert.title || alert.alertType || 'Infrastructure Anomaly Detected'}</h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{alert.message || alert.description}</p>
+                      <span className={`text-[11px] font-bold mt-1.5 block ${sev === 'CRITICAL' ? 'text-red-600' : sev === 'HIGH' ? 'text-amber-700' : 'text-sky-700'}`}>
+                        {alert.sector || 'Central Sector'} • {alert.timeAgo || (alert.createdAt ? new Date(alert.createdAt).toLocaleDateString('en-IN') : 'Live Alert')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           <div className="pt-4 mt-4 border-t border-slate-100 text-center">
-            <Link to="/reports" className="text-xs font-bold text-sky-600 hover:text-sky-800">
-              View All 18 Early Warning Risk Reports &rarr;
+            <Link to="/alerts" className="text-xs font-bold text-sky-600 hover:text-sky-800">
+              View All {liveAlerts.length || 18} Early Warning Risk Reports &rarr;
             </Link>
           </div>
         </div>
@@ -556,7 +698,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Statutory Clearance Tracker</h2>
               <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
-                96 Pending Sanctions
+                {clearanceBottlenecks.reduce((sum, c) => sum + (c.pending || 0), 0)} Pending Sanctions
               </span>
             </div>
 

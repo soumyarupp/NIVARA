@@ -22,11 +22,13 @@ router.post(
 );
 router.patch(
   '/:id',
+  authenticate,
   authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),
   updateAgency
 );
 router.patch(
   '/:id/status',
+  authenticate,
   authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),
   updateAgencyStatus
 );

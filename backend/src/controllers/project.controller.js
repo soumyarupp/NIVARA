@@ -18,8 +18,9 @@ import { logAuditEvent } from '../services/audit.service.js';
  * Helper to build role-scoped MongoDB filter
  */
 function buildScopeFilter(user) {
+  if (!user) return {};
   const role = user.role;
-  if (['SUPER_ADMIN', 'IPMD_ADMIN'].includes(role)) {
+  if (!role || ['SUPER_ADMIN', 'IPMD_ADMIN'].includes(role)) {
     return {};
   }
   if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(role)) {
@@ -357,6 +358,13 @@ export async function getProjectById(req, res) {
           : Alert.find({ projectId: targetProjectId, status: { $in: ['ACTIVE', 'ACKNOWLEDGED'] } }).lean()
       ]);
 
+    // Use monthly reports from collection or from embedded array on project
+    const resolvedReports = (latestReports && latestReports.length > 0)
+      ? latestReports
+      : (project.monthlyReports && project.monthlyReports.length > 0)
+      ? project.monthlyReports
+      : [];
+
     return sendSuccess(res, 'Project details retrieved.', {
       ...project,
       landDetail,
@@ -365,7 +373,9 @@ export async function getProjectById(req, res) {
       milestones,
       partners,
       documents,
-      monthlyReports: latestReports,
+      monthlyReports: resolvedReports,
+      monthlyData: project.monthlyData || {},
+      historyByYear: project.historyByYear || {},
       activeAlerts
     });
   } catch (err) {

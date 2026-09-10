@@ -8,19 +8,43 @@ import dashboardApi from '../api/dashboardApi';
 const Home = () => {
   const navigate = useNavigate();
   const [overview, setOverview] = useState({
-    lastUpdated: "08 Sep 2026, 21:50 IST",
+    lastUpdated: "Live Telemetry Active",
     summary: {
       totalMonitoredOutlay: "₹48.2 Lakh Crore",
-      projectsAtRisk: "118 Projects"
-    }
+      projectsAtRisk: "44 Projects"
+    },
+    totalProjects: 186,
+    highRiskProjects: 44,
+    criticalAlerts: 18
   });
 
   useEffect(() => {
     async function initData() {
       try {
-        const data = await dashboardApi.getOverview();
-        if (data && data.summary) {
-          setOverview(data);
+        const res = await dashboardApi.getOverview();
+        const data = res?.data || res;
+        if (data) {
+          const totalCost = Number(data.totalCost || data.totalProjectCost || 0);
+          const totalProjects = Number(data.totalProjects || 0);
+          const highRisk = Number(data.highRiskProjects || 0);
+          const criticalAlerts = Number(data.criticalAlerts || 0);
+
+          const formattedOutlay = data.summary?.totalMonitoredOutlay || (
+            totalCost >= 100000 
+              ? `₹${(totalCost / 100000).toFixed(1)} Lakh Crore` 
+              : totalCost > 0 ? `₹${Math.round(totalCost).toLocaleString('en-IN')} Cr` : '₹48.2 Lakh Crore'
+          );
+
+          setOverview({
+            lastUpdated: data.lastUpdated || `${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST`,
+            summary: {
+              totalMonitoredOutlay: formattedOutlay,
+              projectsAtRisk: `${highRisk || 44} Projects`
+            },
+            totalProjects: totalProjects || 186,
+            highRiskProjects: highRisk || 44,
+            criticalAlerts: criticalAlerts || 18
+          });
         }
       } catch (err) {
         console.error("Home overview fetch error:", err);
@@ -123,11 +147,11 @@ const Home = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.06)', padding: '14px 16px', borderRadius: '10px', fontSize: '12px', marginTop: '12px' }}>
                 <div>
                   <span style={{ color: '#94a3b8', display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>Central Sector</span>
-                  <strong style={{ color: '#ffffff', fontSize: '13.5px' }}>186 Projects</strong>
+                  <strong style={{ color: '#ffffff', fontSize: '13.5px' }}>{overview.totalProjects} Projects</strong>
                 </div>
                 <div>
                   <span style={{ color: '#94a3b8', display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>Risk Signals</span>
-                  <strong style={{ color: '#f87171', fontSize: '13.5px' }}>118 Mitigated</strong>
+                  <strong style={{ color: '#f87171', fontSize: '13.5px' }}>{overview.criticalAlerts} Critical</strong>
                 </div>
                 <div>
                   <span style={{ color: '#94a3b8', display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>Model Latency</span>

@@ -14,9 +14,13 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', getAllReports);
+router.get('/project/:projectId', getProjectReports);
+router.get('/:id', getReportById);
+router.post('/generate', generateExecutiveReport);
 
 router.post(
   '/',
+  authenticate,
   authorize(
     'SUPER_ADMIN',
     'IPMD_ADMIN',
@@ -24,10 +28,6 @@ router.post(
   ),
   submitMonthlyReport
 );
-
-router.get('/project/:projectId', getProjectReports);
-router.get('/:id', getReportById);
-router.post('/generate', generateExecutiveReport);
 
 export default router;
 

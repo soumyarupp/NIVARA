@@ -1338,11 +1338,18 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+  max-width: calc(100vw - 240px);
+  width: calc(100% - 240px);
+  overflow-x: hidden;
+  box-sizing: border-box;
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .admin-app-wrapper.sidebar-collapsed .admin-main-container {
   margin-left: 72px;
+  max-width: calc(100vw - 72px);
+  width: calc(100% - 72px);
 }
 
 /* Permanent Fixed Top Header */

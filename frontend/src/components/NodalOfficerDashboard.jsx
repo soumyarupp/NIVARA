@@ -276,7 +276,7 @@ const NodalOfficerDashboard = () => {
               const aId = a._id || a.id;
               const proj = a.project || projects.find(p => (p._id || p.id) === (a.projectId || a.project));
               const projName = proj?.projectName || proj?.name || a.projectName || 'Infrastructure Project';
-              const pId = proj?._id || proj?.id || a.projectId;
+              const pId = proj?._id || proj?.id || (typeof a.projectId === 'object' && a.projectId !== null ? (a.projectId._id || a.projectId.projectCode) : a.projectId);
 
               return (
                 <div key={idx} className="p-5 bg-white border border-slate-200 rounded-2xl shadow-2xs hover:shadow-xs transition-all flex flex-col md:flex-row justify-between md:items-center gap-4.5 text-xs">

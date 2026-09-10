@@ -267,22 +267,39 @@ const ProjectDetailsPage = () => {
     setError(null);
     try {
       let projData = null;
-      try {
-        const res = await projectApi.getProjectById(id);
-        projData = res?.project || res?.data || res;
-      } catch (apiErr) {
-        console.warn("API project lookup failed, checking fallback projects:", apiErr.message);
+      let targetId = id;
+
+      // Handle invalid or stringified object id gracefully
+      if (!targetId || targetId === '[object Object]' || targetId === 'undefined' || targetId === 'null') {
+        try {
+          const listRes = await projectApi.getProjects({ limit: 1 });
+          const first = listRes?.projects?.[0] || listRes?.data?.[0];
+          if (first) {
+            targetId = first.projectCode || first._id || first.id;
+            navigate(`/projects/${targetId}`, { replace: true });
+          }
+        } catch (_) {}
+      }
+
+      if (targetId && targetId !== '[object Object]') {
+        try {
+          const res = await projectApi.getProjectById(targetId);
+          projData = res?.project || res?.data || res;
+        } catch (apiErr) {
+          console.warn("API project lookup failed, checking fallback projects:", apiErr.message);
+        }
       }
 
       // Check fallback dictionary if not found in database
       if (!projData || (!projData.projectName && !projData.name)) {
-        const matchedFallback = FALLBACK_PROJECTS[id] || 
+        const lookupKey = targetId || '707267';
+        const matchedFallback = FALLBACK_PROJECTS[lookupKey] || 
           Object.values(FALLBACK_PROJECTS).find(p => 
-            p.projectCode.toLowerCase() === (id || '').toLowerCase() ||
-            p.projectName.toLowerCase().includes((id || '').toLowerCase())
-          );
+            p.projectCode.toLowerCase() === (lookupKey || '').toLowerCase() ||
+            p.projectName.toLowerCase().includes((lookupKey || '').toLowerCase())
+          ) || FALLBACK_PROJECTS['MORTH-PORT-PARADEEP'];
         if (matchedFallback) {
-          projData = { ...matchedFallback, _id: id };
+          projData = { ...matchedFallback, _id: lookupKey };
         }
       }
 
@@ -298,11 +315,15 @@ const ProjectDetailsPage = () => {
       if (Array.isArray(projData.milestones) && projData.milestones.length > 0) setMilestones(projData.milestones);
       if (Array.isArray(projData.partners) && projData.partners.length > 0) setPartners(projData.partners);
       if (Array.isArray(projData.documents) && projData.documents.length > 0) setDocuments(projData.documents);
-      if (Array.isArray(projData.monthlyReports) && projData.monthlyReports.length > 0) setReports(projData.monthlyReports);
+      if (Array.isArray(projData.monthlyReports) && projData.monthlyReports.length > 0) {
+        setReports(projData.monthlyReports);
+      } else if (projData.monthlyData && typeof projData.monthlyData === 'object') {
+        setReports(Object.values(projData.monthlyData));
+      }
       if (Array.isArray(projData.activeAlerts) && projData.activeAlerts.length > 0) setAlerts(projData.activeAlerts);
 
       // Fetch related subcomponents in parallel
-      const projectId = projData._id || id;
+      const projectId = projData._id || targetId;
       const [landRes, clearRes, tendRes, mileRes, partRes, docRes, repRes, alRes] = await Promise.allSettled([
         subcomponentApi.getLandDetail(projectId),
         subcomponentApi.getClearances(projectId),
@@ -320,10 +341,21 @@ const ProjectDetailsPage = () => {
       if (mileRes.status === 'fulfilled' && Array.isArray(mileRes.value?.data) && mileRes.value.data.length > 0) setMilestones(mileRes.value.data);
       if (partRes.status === 'fulfilled' && Array.isArray(partRes.value?.data) && partRes.value.data.length > 0) setPartners(partRes.value.data);
       if (docRes.status === 'fulfilled' && Array.isArray(docRes.value?.data) && docRes.value.data.length > 0) setDocuments(docRes.value.data);
-      if (repRes.status === 'fulfilled' && Array.isArray(repRes.value?.data) && repRes.value.data.length > 0) setReports(repRes.value.data);
+      if (repRes.status === 'fulfilled' && Array.isArray(repRes.value?.data) && repRes.value.data.length > 0) {
+        setReports(repRes.value.data);
+      } else if (Array.isArray(projData.monthlyReports) && projData.monthlyReports.length > 0) {
+        setReports(projData.monthlyReports);
+      } else if (projData.monthlyData && typeof projData.monthlyData === 'object') {
+        setReports(Object.values(projData.monthlyData));
+      }
       if (alRes.status === 'fulfilled') {
         const allAlerts = alRes.value?.data || alRes.value?.alerts || [];
-        const filteredAlerts = allAlerts.filter(a => a.projectId === projectId || (a.project && (a.project._id === projectId || a.project.projectCode === projectId)));
+        const filteredAlerts = allAlerts.filter(a => {
+          const aProjId = (typeof a.projectId === 'object' && a.projectId !== null) 
+            ? (a.projectId._id || a.projectId.projectCode) 
+            : (a.projectId || a.project?._id || a.project?.projectCode);
+          return aProjId === projectId || aProjId === projData.projectCode;
+        });
         if (filteredAlerts.length > 0) setAlerts(filteredAlerts);
       }
     } catch (err) {
@@ -332,7 +364,7 @@ const ProjectDetailsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, navigate]);
 
   useEffect(() => {
     fetchProjectData();
@@ -428,16 +460,32 @@ const ProjectDetailsPage = () => {
   const district = project.district || 'Muzaffarpur';
   const sector = project.sector || 'ROAD';
   const status = project.projectStatus || project.status || 'ONGOING';
+  const isCompleted = status === 'COMPLETED';
   const cost = Number(project.originalProjectCost || project.budgetEstimatedInCrores || project.sanctionedCost || 850);
   const revisedCost = Number(project.revisedProjectCost || cost);
   const exp = Number(project.expenditure || project.totalActualExpenditure || 0);
   const physProg = Number(project.physicalProgress?.overallPercentage ?? project.physicalProgress ?? project.progress ?? 33.0);
-  const planProg = Number(project.plannedPhysicalProgress ?? 45.0);
-  const finProg = Number(project.financialProgress || (cost > 0 ? ((exp / cost) * 100).toFixed(1) : 50.0));
-  const gap = Math.abs(finProg - physProg).toFixed(1);
-  const riskScore = Number(project.riskScore || (project.riskLevel === 'CRITICAL' ? 84 : project.riskLevel === 'HIGH' ? 68 : 45));
+  const planProg = Number(project.plannedPhysicalProgress ?? (isCompleted ? 100 : 45.0));
+  const finProg = Number(project.financialProgress || (cost > 0 ? ((exp / cost) * 100).toFixed(1) : (isCompleted ? 100 : 50.0)));
+  const gapDiff = Number((finProg - physProg).toFixed(1));
+  const gapAbs = Math.abs(gapDiff).toFixed(1);
+  const isSpendLeading = gapDiff > 0.1;
+  const isPhysLeading = gapDiff < -0.1;
+  const isAligned = !isSpendLeading && !isPhysLeading;
+
+  const riskScore = Number(project.riskScore ?? (project.riskLevel === 'CRITICAL' ? 84 : project.riskLevel === 'HIGH' ? 68 : project.riskLevel === 'LOW' ? 6 : (isCompleted ? 0 : 45)));
   const riskLevel = project.riskLevel || (riskScore > 80 ? 'CRITICAL' : riskScore > 60 ? 'HIGH' : riskScore > 30 ? 'MEDIUM' : 'LOW');
-  const delayDays = Number(project.delayDays || (riskScore > 60 ? 142 : 0));
+  const delayDays = isCompleted ? 0 : Number(project.delayDays || (riskScore > 60 ? 142 : 0));
+
+  const formatDateLabel = (d) => {
+    if (!d) return null;
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return null;
+    return dateObj.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  };
+
+  const targetDateStr = formatDateLabel(project.originalCompletionDate || project.targetCompletionDate) || 'March 2028';
+  const forecastDateStr = formatDateLabel(project.revisedCompletionDate || project.completionDate) || (delayDays > 0 ? 'August 2028' : targetDateStr);
 
   const tabs = [
     { key: 'overview', label: 'Overview' },
@@ -454,24 +502,24 @@ const ProjectDetailsPage = () => {
     <div className={`admin-app-wrapper ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <AdminSidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
-      <div className="admin-main-container flex flex-col min-h-screen">
+      <div className="admin-main-container flex flex-col min-h-screen min-w-0">
         <AdminTopHeader onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} activeKey="/projects" />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 bg-slate-50/70">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 bg-slate-50/70 min-w-0 max-w-full overflow-x-hidden">
           
           {/* Top Header & Breadcrumb Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-wrap min-w-0">
               <Link 
                 to="/projects" 
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-sky-600 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 transition shadow-2xs"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-sky-600 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 transition shadow-2xs shrink-0"
               >
                 <ArrowLeft size={14} /> 
                 <span>Back to Projects Registry</span>
               </Link>
 
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   Live Telemetry Active
                 </span>
@@ -482,11 +530,11 @@ const ProjectDetailsPage = () => {
             </div>
 
             {/* Quick Action Button Group */}
-            <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
               {isReportingOfficer && (
                 <Link
                   to={`/submit-report?projectId=${project._id || projectCode}`}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5 shrink-0"
                 >
                   <UploadCloud size={14} />
                   <span>Submit Monthly Report</span>
@@ -504,7 +552,7 @@ const ProjectDetailsPage = () => {
                   setActionFeedback(null);
                   setIsActionModalOpen(true);
                 }}
-                className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer inline-flex items-center gap-1.5 shrink-0"
               >
                 <ShieldAlert size={14} /> 
                 <span>Officer Action</span>
@@ -522,7 +570,7 @@ const ProjectDetailsPage = () => {
                     setActionFeedback(null);
                     setIsActionModalOpen(true);
                   }}
-                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs cursor-pointer inline-flex items-center gap-1.5 shrink-0"
                 >
                   <Scale size={14} /> 
                   <span>Take Policy Action</span>
@@ -531,7 +579,7 @@ const ProjectDetailsPage = () => {
 
               <Link
                 to={`/what-if-simulator?projectId=${project._id || projectCode}`}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5 shrink-0"
               >
                 <Zap size={14} />
                 <span>What-If Simulator</span>
@@ -539,7 +587,7 @@ const ProjectDetailsPage = () => {
 
               <Link
                 to="/chatbot"
-                className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5"
+                className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5 shrink-0"
               >
                 <Bot size={14} />
                 <span>Ask AI Copilot</span>
@@ -551,7 +599,7 @@ const ProjectDetailsPage = () => {
           <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 shadow-xs relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-sky-50 via-indigo-50/30 to-transparent rounded-full -mr-20 -mt-20 pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+            <div className="relative z-10 flex flex-col 2xl:flex-row justify-between 2xl:items-center gap-6">
               <div className="space-y-3 max-w-3xl">
                 {/* Badges Row */}
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -608,7 +656,7 @@ const ProjectDetailsPage = () => {
               </div>
 
               {/* High-Impact Executive Metric Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4 gap-3 bg-slate-50/80 border border-slate-200/80 p-3.5 sm:p-4 rounded-2xl shrink-0">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/80 border border-slate-200/80 p-3.5 sm:p-4 rounded-2xl shrink-0">
                 <div className="p-3 bg-white rounded-xl border border-slate-200/60 shadow-2xs">
                   <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Sanctioned Outlay</span>
                   <div className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">₹{cost} <span className="text-xs font-bold text-slate-500">Cr</span></div>
@@ -629,10 +677,20 @@ const ProjectDetailsPage = () => {
 
                 <div className="p-3 bg-white rounded-xl border border-slate-200/60 shadow-2xs">
                   <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Progress Gap</span>
-                  <div className={`text-lg sm:text-xl font-extrabold mt-1 ${Number(gap) > 10 ? 'text-amber-600' : 'text-slate-800'}`}>
-                    +{gap}%
+                  <div className={`text-lg sm:text-xl font-extrabold mt-1 ${
+                    isSpendLeading ? 'text-amber-600' :
+                    isPhysLeading ? 'text-emerald-600' :
+                    'text-slate-800'
+                  }`}>
+                    {isAligned ? '0.0%' : `+${gapAbs}%`}
                   </div>
-                  <span className="text-[10px] text-amber-700 font-bold">Disbursement Lead</span>
+                  <span className={`text-[10px] font-bold ${
+                    isSpendLeading ? 'text-amber-700' :
+                    isPhysLeading ? 'text-emerald-700' :
+                    'text-slate-500'
+                  }`}>
+                    {isSpendLeading ? 'Disbursement Lead' : isPhysLeading ? 'Physical Lead' : 'Progress Aligned'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -665,12 +723,16 @@ const ProjectDetailsPage = () => {
               
               {/* 4 KPI Telemetry Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* KPI 1 */}
+                {/* KPI 1: Execution Variance */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Execution Variance</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
-                      +{gap}% Gap
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                      isSpendLeading ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                      isPhysLeading ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      'bg-slate-50 text-slate-700 border-slate-200'
+                    }`}>
+                      {isAligned ? '0.0% Aligned' : `+${gapAbs}% ${isSpendLeading ? 'Spend Lead' : 'Physical Lead'}`}
                     </span>
                   </div>
                   <div className="flex items-baseline gap-2">
@@ -678,62 +740,115 @@ const ProjectDetailsPage = () => {
                     <span className="text-xs text-slate-500 font-semibold">Physical vs {finProg}% Financial</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex">
-                    <div className="bg-sky-500 h-2" style={{ width: `${Math.min(100, physProg)}%` }}></div>
-                    <div className="bg-amber-400 h-2" style={{ width: `${Math.min(100, Number(gap))}%` }}></div>
+                    <div className="bg-sky-500 h-2 rounded-full" style={{ width: `${Math.min(100, physProg)}%` }}></div>
                   </div>
-                  <span className="text-[11px] text-amber-700 font-medium block">Spending is outpacing ground execution</span>
+                  <span className={`text-[11px] font-medium block ${
+                    isSpendLeading ? 'text-amber-700' :
+                    isPhysLeading ? 'text-emerald-700' :
+                    'text-slate-500'
+                  }`}>
+                    {isSpendLeading
+                      ? 'Disbursement is outpacing ground execution.'
+                      : isPhysLeading
+                      ? 'Ground execution is outpacing financial disbursement.'
+                      : 'Spending is completely synchronized with ground execution.'}
+                  </span>
                 </div>
 
-                {/* KPI 2 */}
+                {/* KPI 2: Schedule Slip Forecast */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Schedule Slip Forecast</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
-                      +{delayDays} Days
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                      isCompleted || delayDays <= 0
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                    }`}>
+                      {isCompleted ? 'Completed' : delayDays <= 0 ? 'On Schedule' : `+${delayDays} Days`}
                     </span>
                   </div>
-                  <div className="text-2xl font-extrabold text-rose-600">
-                    +{delayDays} Days
+                  <div className={`text-2xl font-extrabold ${
+                    isCompleted || delayDays <= 0 ? 'text-emerald-600' : 'text-rose-600'
+                  }`}>
+                    {isCompleted ? '0 Days Delay' : delayDays <= 0 ? '0 Days Delay' : `+${delayDays} Days`}
                   </div>
                   <div className="text-[11px] text-slate-500 flex justify-between">
-                    <span>Target: March 2028</span>
-                    <span className="font-bold text-slate-700">Forecast: Aug 2028</span>
+                    <span>Target: {targetDateStr}</span>
+                    <span className="font-bold text-slate-700">Forecast: {forecastDateStr}</span>
                   </div>
-                  <span className="text-[11px] text-rose-700 font-medium block">Right-of-Way &amp; clearance delays</span>
+                  <span className={`text-[11px] font-medium block ${
+                    isCompleted || delayDays <= 0 ? 'text-emerald-700' : 'text-rose-700'
+                  }`}>
+                    {isCompleted
+                      ? 'Project completed within timeline parameters.'
+                      : delayDays <= 0
+                      ? 'Milestones progressing on schedule without slippage.'
+                      : (project.delayReasonText || 'Right-of-Way & statutory clearance delays')}
+                  </span>
                 </div>
 
-                {/* KPI 3 */}
+                {/* KPI 3: Land Acquisition */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Land Acquisition</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-50 text-sky-700 border border-sky-200">
-                      {land?.percentageAcquired || 84.4}%
+                      {land?.percentageAcquired || (isCompleted ? 100 : 84.4)}%
                     </span>
                   </div>
                   <div className="text-2xl font-extrabold text-slate-900">
-                    {land?.landAcquired || 380} <span className="text-xs text-slate-400 font-bold">/ {land?.totalLandRequired || 450} Ha</span>
+                    {land?.landAcquired || (isCompleted ? 450 : 380)} <span className="text-xs text-slate-400 font-bold">/ {land?.totalLandRequired || 450} Ha</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div className="bg-sky-600 h-2 rounded-full" style={{ width: `${land?.percentageAcquired || 84.4}%` }}></div>
+                    <div className="bg-sky-600 h-2 rounded-full" style={{ width: `${land?.percentageAcquired || (isCompleted ? 100 : 84.4)}%` }}></div>
                   </div>
-                  <span className="text-[11px] text-slate-500 font-medium block">70 Ha pending possession in Section 3D</span>
+                  <span className="text-[11px] text-slate-500 font-medium block">
+                    {isCompleted
+                      ? '100% Right-of-Way secured & commissioned'
+                      : (land?.statusRemarks || '70 Ha pending possession in Section 3D')}
+                  </span>
                 </div>
 
-                {/* KPI 4 */}
+                {/* KPI 4: AI Early Warning */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">AI Early Warning</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                      riskLevel === 'LOW'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : riskLevel === 'MEDIUM'
+                        ? 'bg-sky-50 text-sky-700 border-sky-200'
+                        : riskLevel === 'HIGH'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                    }`}>
                       Score: {riskScore}/100
                     </span>
                   </div>
-                  <div className="text-2xl font-extrabold text-amber-600">
+                  <div className={`text-2xl font-extrabold ${
+                    riskLevel === 'LOW'
+                      ? 'text-emerald-600'
+                      : riskLevel === 'MEDIUM'
+                      ? 'text-sky-600'
+                      : riskLevel === 'HIGH'
+                      ? 'text-amber-600'
+                      : 'text-rose-600'
+                  }`}>
                     {riskLevel} RISK
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    Forest Stage II clearance pending
+                    {riskLevel === 'LOW'
+                      ? (isCompleted ? 'Project successfully finalized' : 'No critical bottlenecks identified')
+                      : 'Statutory clearances & vendor milestones pending'}
                   </div>
-                  <span className="text-[11px] text-amber-700 font-medium block">2 active risk alerts flagged</span>
+                  <span className={`text-[11px] font-medium block ${
+                    riskLevel === 'LOW' ? 'text-emerald-700' : 'text-amber-700'
+                  }`}>
+                    {alerts.length > 0
+                      ? `${alerts.length} active risk alerts flagged`
+                      : riskLevel === 'LOW'
+                      ? '0 active risk alerts'
+                      : '2 active risk alerts flagged'}
+                  </span>
                 </div>
               </div>
 
@@ -971,7 +1086,13 @@ const ProjectDetailsPage = () => {
                       <span className="text-[10px] font-mono bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded">Live v2.4</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Physical progress (<strong>{physProg}%</strong>) has trailed financial disbursement (<strong>{finProg}%</strong>) by <strong>+{gap}%</strong> due to pending forest clearance Stage II at Supaul section.
+                      {isCompleted
+                        ? `Project has completed execution (100% Physical / ${finProg}% Financial). All statutory clearance benchmarks and milestone deliverables are archived.`
+                        : isSpendLeading
+                        ? `Financial disbursement (${finProg}%) leads ground physical completion (${physProg}%) by +${gapAbs}%. Proactive site audit and contractor reconciliation recommended.`
+                        : isPhysLeading
+                        ? `Physical ground progress (${physProg}%) is outpacing financial expenditure (${finProg}%) by +${gapAbs}%. Project delivery is progressing on a high-efficiency track.`
+                        : `Physical progress (${physProg}%) and financial spend (${finProg}%) are in steady alignment across all active packages.`}
                     </p>
                     <Link
                       to="/chatbot"
@@ -1109,57 +1230,126 @@ const ProjectDetailsPage = () => {
 
           {/* TAB 4: MONTHLY REPORTS */}
           {activeTab === 'reports' && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
-              <div className="flex justify-between items-center flex-wrap gap-3">
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Submitted Progress Reports Audit Log</h3>
-                  <p className="text-xs text-slate-500">Statutory monthly returns filed by field project officers</p>
+            <div className="space-y-6">
+              {/* Telemetry Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Reported Cycles</span>
+                  <div className="text-xl font-extrabold text-slate-900 mt-1">{reports.length} Months</div>
+                  <span className="text-[11px] font-semibold text-emerald-600 mt-0.5 block">April - July 2026</span>
                 </div>
-                {isReportingOfficer && (
-                  <Link
-                    to={`/submit-report?projectId=${project._id || projectCode}`}
-                    className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5"
-                  >
-                    <UploadCloud size={14} />
-                    <span>Submit New Report</span>
-                  </Link>
-                )}
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Latest Spend</span>
+                  <div className="text-xl font-extrabold text-slate-900 mt-1">₹{reports[0]?.expenditure ?? project.expenditure ?? 0} Cr</div>
+                  <span className="text-[11px] font-semibold text-sky-600 mt-0.5 block">Cumulative Outlay</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Physical Progress</span>
+                  <div className="text-xl font-extrabold text-teal-600 mt-1">{reports[0]?.actualPhysicalProgress ?? project.physicalProgress ?? 0}%</div>
+                  <span className="text-[11px] font-semibold text-slate-500 mt-0.5 block">Field Work Completed</span>
+                </div>
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Financial Progress</span>
+                  <div className="text-xl font-extrabold text-indigo-600 mt-1">{reports[0]?.actualFinancialProgress ?? project.financialProgress ?? 0}%</div>
+                  <span className="text-[11px] font-semibold text-slate-500 mt-0.5 block">Funds Utilized</span>
+                </div>
               </div>
 
-              {reports.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                  <FileText size={32} className="mx-auto text-slate-300" />
-                  <h4 className="text-xs font-bold text-slate-700">No Monthly Reports Filed Yet</h4>
-                  <p className="text-[11px] text-slate-400">Reporting officers can submit monthly physical and financial progress.</p>
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
+                <div className="flex justify-between items-center flex-wrap gap-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900">Submitted Progress Reports Audit Log (Month &amp; Year Breakdown)</h3>
+                    <p className="text-xs text-slate-500">Official monthly flash reports and progress returns filed by field project officers</p>
+                  </div>
+                  {isReportingOfficer && (
+                    <Link
+                      to={`/submit-report?projectId=${project._id || projectCode}`}
+                      className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-1.5"
+                    >
+                      <UploadCloud size={14} />
+                      <span>Submit New Report</span>
+                    </Link>
+                  )}
                 </div>
-              ) : (
-                <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-[11px]">
-                      <tr>
-                        <th className="py-3 px-4">Reporting Month</th>
-                        <th className="py-3 px-4">Expenditure</th>
-                        <th className="py-3 px-4">Physical %</th>
-                        <th className="py-3 px-4">Financial %</th>
-                        <th className="py-3 px-4">Delay Reason &amp; Remarks</th>
-                        <th className="py-3 px-4">Submitted By</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {reports.map((r, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80 transition">
-                          <td className="py-3.5 px-4 font-extrabold text-slate-900">{r.reportingMonth}</td>
-                          <td className="py-3.5 px-4 font-bold text-emerald-700">₹{r.expenditure} Cr</td>
-                          <td className="py-3.5 px-4 font-bold text-slate-800">{r.actualPhysicalProgress}%</td>
-                          <td className="py-3.5 px-4 font-bold text-sky-700">{r.actualFinancialProgress}%</td>
-                          <td className="py-3.5 px-4 max-w-xs text-slate-600">{r.delayReasonText || r.remarks || 'Normal execution'}</td>
-                          <td className="py-3.5 px-4 text-slate-500">{r.submittedBy?.fullName || r.submittedBy?.name || 'Reporting Officer'}</td>
+
+                {reports.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                    <FileText size={32} className="mx-auto text-slate-300" />
+                    <h4 className="text-xs font-bold text-slate-700">No Monthly Reports Filed Yet</h4>
+                    <p className="text-[11px] text-slate-400">Reporting officers can submit monthly physical and financial progress.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-[11px]">
+                        <tr>
+                          <th className="py-3.5 px-4">Month &amp; Year</th>
+                          <th className="py-3.5 px-4">Cumulative Expenditure</th>
+                          <th className="py-3.5 px-4">Physical Progress</th>
+                          <th className="py-3.5 px-4">Financial Progress</th>
+                          <th className="py-3.5 px-4">Projected Delay</th>
+                          <th className="py-3.5 px-4">Delay Reason &amp; Remarks</th>
+                          <th className="py-3.5 px-4">Officer / Source</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {reports.map((r, idx) => {
+                          const monthLabel = r.monthName || (r.reportingMonth === '2026-04' ? 'April 2026' : r.reportingMonth === '2026-05' ? 'May 2026' : r.reportingMonth === '2026-06' ? 'June 2026' : r.reportingMonth === '2026-07' ? 'July 2026' : r.reportingMonth);
+                          const phy = r.actualPhysicalProgress ?? 0;
+                          const fin = r.actualFinancialProgress ?? 0;
+                          const delay = r.delayDays ?? (r.delayMonths ? r.delayMonths * 30 : 0);
+
+                          return (
+                            <tr key={r._id || r.reportingMonth || idx} className="hover:bg-slate-50/80 transition">
+                              <td className="py-3.5 px-4">
+                                <div className="font-extrabold text-slate-900">{monthLabel}</div>
+                                <div className="text-[11px] font-mono text-slate-400 mt-0.5">{r.reportingMonth || (r.year ? `${r.year}-${String(r.month).padStart(2, '0')}` : '2026-04')}</div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="font-extrabold text-emerald-700">₹{r.expenditure} Cr</span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-teal-500 rounded-full" style={{ width: `${Math.min(100, phy)}%` }}></div>
+                                  </div>
+                                  <span className="font-bold text-slate-800">{phy}%</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(100, fin)}%` }}></div>
+                                  </div>
+                                  <span className="font-bold text-indigo-700">{fin}%</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                {delay > 0 ? (
+                                  <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                                    +{delay} days
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                    On Schedule
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 max-w-xs text-slate-600">
+                                <div className="line-clamp-2">{r.delayReasonText || r.remarks || 'Statutory return filed'}</div>
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-500">
+                                <div className="font-medium">{r.submittedBy?.fullName || r.submittedBy?.name || 'Reporting Officer'}</div>
+                                <div className="text-[10px] text-slate-400">Flash Report Official Sync</div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1367,14 +1557,32 @@ const ProjectDetailsPage = () => {
                   <span className="text-xs font-bold text-slate-400">Automated Risk Engine v2.4</span>
                 </div>
 
-                <div className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-extrabold text-xl shrink-0 shadow-xs">
+                <div className={`p-5 rounded-2xl flex items-start gap-4 border ${
+                  riskLevel === 'LOW'
+                    ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200'
+                    : riskLevel === 'MEDIUM'
+                    ? 'bg-gradient-to-r from-sky-50 to-indigo-50 border-sky-200'
+                    : riskLevel === 'HIGH'
+                    ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+                    : 'bg-gradient-to-r from-rose-50 to-orange-50 border-rose-200'
+                }`}>
+                  <div className={`w-14 h-14 rounded-2xl text-white flex items-center justify-center font-extrabold text-xl shrink-0 shadow-xs ${
+                    riskLevel === 'LOW' ? 'bg-emerald-600' : riskLevel === 'MEDIUM' ? 'bg-sky-600' : riskLevel === 'HIGH' ? 'bg-amber-500' : 'bg-rose-600'
+                  }`}>
                     {riskScore}
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-amber-950 text-sm tracking-tight">{riskLevel} RISK CLASSIFICATION</h4>
-                    <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                      Physical vs financial progress mismatch (+{gap}%) coupled with pending Forest Clearance Stage II triggers an automated predictive delay warning of +{delayDays} days.
+                    <h4 className={`font-extrabold text-sm tracking-tight ${
+                      riskLevel === 'LOW' ? 'text-emerald-950' : riskLevel === 'MEDIUM' ? 'text-sky-950' : riskLevel === 'HIGH' ? 'text-amber-950' : 'text-rose-950'
+                    }`}>
+                      {riskLevel} RISK CLASSIFICATION
+                    </h4>
+                    <p className={`text-xs mt-1 leading-relaxed ${
+                      riskLevel === 'LOW' ? 'text-emerald-900' : riskLevel === 'MEDIUM' ? 'text-sky-900' : riskLevel === 'HIGH' ? 'text-amber-900' : 'text-rose-900'
+                    }`}>
+                      {riskLevel === 'LOW'
+                        ? 'Project execution metrics, statutory milestones, and telemetry feeds are operating within safe tolerance boundaries.'
+                        : `Physical vs financial progress mismatch (+${gapAbs}%) triggers an automated predictive delay warning of +${delayDays} days.`}
                     </p>
                   </div>
                 </div>

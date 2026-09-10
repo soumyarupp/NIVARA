@@ -45,6 +45,7 @@ import { upload } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
+// Enforce strict officer authentication on all project operations
 router.use(authenticate);
 
 // Create Project & Draft Workflows
@@ -78,6 +79,7 @@ router.get('/similar-benchmarks', getSimilarProjectBenchmarks);
 // Project List & Details
 router.get('/', getProjects);
 router.get('/:id', getProjectById);
+
 router.post(
   '/:id/action',
   authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'NODAL_OFFICER', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),

@@ -363,9 +363,13 @@ export default function AlertsPage() {
                   <tbody className="text-xs divide-y divide-slate-100">
                     {filteredAlerts.map((alert) => {
                       const alertId = alert._id || alert.id;
-                      const projectId = alert.project?._id || alert.project || alert.projectId;
-                      const projectName = alert.project?.name || alert.projectName || 'General Platform Notice';
-                      const projectCode = alert.project?.projectCode || alert.projectCode;
+                      const projectId = (typeof alert.projectId === 'object' && alert.projectId !== null)
+                        ? (alert.projectId._id || alert.projectId.projectCode || alert.projectId.id)
+                        : (typeof alert.project === 'object' && alert.project !== null)
+                          ? (alert.project._id || alert.project.projectCode || alert.project.id)
+                          : (alert.projectId || alert.project);
+                      const projectName = alert.project?.name || alert.project?.projectName || alert.projectId?.projectName || alert.projectName || 'General Platform Notice';
+                      const projectCode = alert.project?.projectCode || alert.projectId?.projectCode || alert.projectCode;
 
                       return (
                         <tr key={alertId} className="hover:bg-slate-50/80 transition-colors">

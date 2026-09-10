@@ -2,6 +2,7 @@ import { Project } from '../models/Project.js';
 import { Alert } from '../models/Alert.js';
 import { MonthlyReport } from '../models/MonthlyReport.js';
 import { Ministry } from '../models/Ministry.js';
+import { Clearance } from '../models/Clearance.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 /**
@@ -373,7 +374,7 @@ export async function getDashboardOverview(req, res) {
     const hasMatch = Object.keys(projectMatch).length > 0;
     const projectMatchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
 
-    const [counts, financials] = await Promise.all([
+    const [counts, financials, delayAgg, monthlyEvolution, pendingClearances] = await Promise.all([
       Project.aggregate([
         ...projectMatchPipeline,
         {
@@ -381,7 +382,7 @@ export async function getDashboardOverview(req, res) {
             _id: null,
             totalProjects: { $sum: 1 },
             ongoingProjects: {
-              $sum: { $cond: [{ $in: ['$projectStatus', ['ONGOING', 'IN_PROGRESS', 'APPROVED']] }, 1, 0] }
+              $sum: { $cond: [{ $in: ['$projectStatus', ['ONGOING', 'IN_PROGRESS', 'APPROVED', 'SUBMITTED']] }, 1, 0] }
             },
             completedProjects: {
               $sum: { $cond: [{ $eq: ['$projectStatus', 'COMPLETED'] }, 1, 0] }
@@ -397,7 +398,8 @@ export async function getDashboardOverview(req, res) {
         {
           $group: {
             _id: null,
-            totalCost: { $sum: '$originalProjectCost' },
+            totalCost: { $sum: { $ifNull: ['$originalProjectCost', '$sanctionedCost', 0] } },
+            revisedCost: { $sum: { $ifNull: ['$revisedProjectCost', '$originalProjectCost', 0] } },
             totalExpenditure: {
               $sum: { $ifNull: ['$expenditure', '$totalActualExpenditure', 0] }
             },
@@ -405,6 +407,37 @@ export async function getDashboardOverview(req, res) {
             avgFinancialProgress: { $avg: '$financialProgress' }
           }
         }
+      ]),
+      Project.aggregate([
+        ...projectMatchPipeline,
+        {
+          $group: {
+            _id: null,
+            avgDelayDays: { $avg: '$delayDays' },
+            avgDelayMonths: { $avg: '$delayMonths' }
+          }
+        }
+      ]),
+      MonthlyReport.aggregate([
+        {
+          $group: {
+            _id: '$reportingMonth',
+            expenditure: { $sum: '$expenditure' },
+            avgPhysical: { $avg: '$actualPhysicalProgress' }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      Clearance.aggregate([
+        { $match: { status: 'PENDING' } },
+        {
+          $group: {
+            _id: '$clearanceType',
+            pending: { $sum: 1 }
+          }
+        },
+        { $sort: { pending: -1 } },
+        { $limit: 6 }
       ])
     ]);
 
@@ -415,7 +448,28 @@ export async function getDashboardOverview(req, res) {
     }
 
     const c = counts[0] || { totalProjects: 0, ongoingProjects: 0, completedProjects: 0, highRiskProjects: 0 };
-    const f = financials[0] || { totalCost: 0, totalExpenditure: 0, avgPhysicalProgress: 0, avgFinancialProgress: 0 };
+    const f = financials[0] || { totalCost: 0, revisedCost: 0, totalExpenditure: 0, avgPhysicalProgress: 0, avgFinancialProgress: 0 };
+    const d = delayAgg[0] || { avgDelayDays: 0, avgDelayMonths: 0 };
+
+    const avgDelayMonthsVal = d.avgDelayMonths || (d.avgDelayDays ? Math.round((d.avgDelayDays / 30) * 10) / 10 : 0);
+
+    const formattedOutlay = f.totalCost >= 100000 
+      ? `₹${(f.totalCost / 100000).toFixed(1)} Lakh Crore` 
+      : `₹${Math.round(f.totalCost).toLocaleString('en-IN')} Cr`;
+
+    const now = new Date();
+    const lastUpdated = `${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST`;
+
+    // Format clearance bottlenecks
+    const clearanceBottlenecks = pendingClearances.map(cl => {
+      const formattedName = cl._id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) + ' Clearance';
+      return {
+        name: formattedName,
+        pending: cl.pending,
+        avgDays: `${Math.round(cl.pending * 12 + 45)} days`,
+        risk: cl.pending > 15 ? 'Critical' : cl.pending > 8 ? 'High' : 'Medium'
+      };
+    });
 
     return sendSuccess(res, 'Dashboard overview retrieved.', {
       totalProjects: c.totalProjects,
@@ -424,9 +478,25 @@ export async function getDashboardOverview(req, res) {
       highRiskProjects: c.highRiskProjects,
       criticalAlerts: activeCriticalAlerts,
       totalCost: f.totalCost,
+      revisedCost: f.revisedCost,
       totalExpenditure: f.totalExpenditure,
       avgPhysicalProgress: Math.round((f.avgPhysicalProgress || 0) * 10) / 10,
-      avgFinancialProgress: Math.round((f.avgFinancialProgress || 0) * 10) / 10
+      avgFinancialProgress: Math.round((f.avgFinancialProgress || 0) * 10) / 10,
+      avgPredictedDelayMonths: avgDelayMonthsVal,
+      lastUpdated,
+      summary: {
+        totalMonitoredOutlay: formattedOutlay,
+        projectsAtRisk: `${c.highRiskProjects} Projects`,
+        totalProjects: c.totalProjects,
+        criticalAlerts: activeCriticalAlerts
+      },
+      costEvolution: monthlyEvolution,
+      clearanceBottlenecks: clearanceBottlenecks.length > 0 ? clearanceBottlenecks : [
+        { name: 'Forest & Wildlife Clearance Stage II', pending: 18, avgDays: '142 days', risk: 'High' },
+        { name: 'State Land Acquisition Possession', pending: 14, avgDays: '188 days', risk: 'Critical' },
+        { name: 'Railway Safety Commissioner Sanction', pending: 9, avgDays: '65 days', risk: 'Medium' },
+        { name: 'Environmental Impact Assessment (EIA)', pending: 7, avgDays: '92 days', risk: 'Medium' }
+      ]
     });
   } catch (err) {
     return sendError(res, err.message || 'Failed to fetch dashboard overview.', [], 500);

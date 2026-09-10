@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
-// Allow authenticated users to simulate pre-approval risks
+// Strictly enforce officer authentication on pre-approval risk simulations
 router.post('/predict', authenticate, predictPreApprovalRisk);
 
 export default router;

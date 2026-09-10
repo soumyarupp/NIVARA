@@ -184,7 +184,10 @@ export default function NotificationsPage() {
             ) : (
               filteredList.map((notif) => {
                 const notifId = notif._id || notif.id;
-                const link = notif.link || (notif.projectId ? `/projects/${notif.projectId}` : null);
+                const pId = typeof notif.projectId === 'object' && notif.projectId !== null
+                  ? (notif.projectId.projectCode || notif.projectId._id || notif.projectId.id)
+                  : notif.projectId;
+                const link = notif.link || (pId ? `/projects/${pId}` : null);
 
                 return (
                   <div

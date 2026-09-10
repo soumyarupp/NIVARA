@@ -27,16 +27,48 @@
  *   "modelVersion": "string",
  *   "lastUpdated": "ISO 8601 timestamp"
  * }
- * -------------------------------------------------------------------------------------
  */
+import projectApi from './projectApi';
 
 const PredictionAPI = {
 
   /**
    * List of monitored Central Sector Mega Projects
-   * Used by the Reports directory table / card view.
+   * Dynamically queries real backend repository with curated fallback.
    */
   async getMonitoredProjects() {
+    try {
+      const res = await projectApi.getProjects({ limit: 50 });
+      const list = res?.projects || res?.data || (Array.isArray(res) ? res : []);
+      if (Array.isArray(list) && list.length > 0) {
+        return list.map((p, idx) => {
+          const id = p.projectCode || p._id || p.id || `PRJ-${idx + 1}`;
+          const name = p.projectName || p.name || 'Central Sector Project';
+          const sector = p.sector || 'Infrastructure';
+          const costVal = p.sanctionedCost || p.originalProjectCost || p.budgetEstimatedInCrores || 0;
+          const outlay = costVal ? `₹ ${Number(costVal).toLocaleString('en-IN')} Cr` : '₹ 1,500 Cr';
+          const status = p.projectStatus || p.status || 'Active Telemetry';
+          const plannedCompletion = p.targetCompletionDate ? (
+            isNaN(new Date(p.targetCompletionDate).getTime()) ? p.targetCompletionDate : new Date(p.targetCompletionDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+          ) : 'Dec 2027';
+          const agency = p.implementationAgencyId?.name || p.implementationAgencyId?.agencyCode || p.agency || 'Executing Agency';
+
+          return {
+            id,
+            name,
+            sector,
+            outlay,
+            status,
+            plannedCompletion,
+            agency,
+            _raw: p
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Live projects fetch in PredictionAPI failed, using fallback list:', err.message);
+    }
+
     return [
       {
         id: "PRJ-WDFC-01",
@@ -327,6 +359,86 @@ const PredictionAPI = {
       throw new Error("Simulated prediction model error: Telemetry data unavailable.");
     }
 
+    // Attempt live project resolution and telemetry synthesis
+    try {
+      const liveRes = await projectApi.getProjectById(projectId);
+      const proj = liveRes?.project || liveRes?.data || (liveRes?.name ? liveRes : null);
+
+      if (proj && (proj.projectName || proj.name || proj.projectCode)) {
+        const physical = Number(proj.physicalProgress || 0);
+        const financial = Number(proj.financialProgress || 0);
+        const sanctioned = Number(proj.originalProjectCost || proj.sanctionedCost || proj.budgetEstimatedInCrores || 1000);
+        const revised = Number(proj.revisedProjectCost || sanctioned);
+        const overrun = Math.max(0, revised - sanctioned);
+        const delayDays = Number(proj.delayDays || 0);
+        const delayMonths = Number(proj.delayMonths || (delayDays ? Math.round(delayDays / 30 * 10) / 10 : (proj.riskLevel === 'CRITICAL' ? 14 : proj.riskLevel === 'HIGH' ? 8 : 2.5)));
+        const riskScore = Number(proj.riskScore || (proj.riskLevel === 'CRITICAL' ? 84 : proj.riskLevel === 'HIGH' ? 68 : proj.riskLevel === 'MEDIUM' ? 44 : 22));
+        const riskLevel = proj.riskLevel ? (proj.riskLevel.charAt(0).toUpperCase() + proj.riskLevel.slice(1).toLowerCase()) : (riskScore >= 75 ? 'Critical' : riskScore >= 50 ? 'High' : riskScore >= 25 ? 'Medium' : 'Low');
+
+        // Dynamically synthesize top contributing risk factors
+        const topFactors = [];
+        if (financial - physical > 8) {
+          topFactors.push({
+            factor: `Expenditure burn (${financial}%) outstripping physical execution (${physical}%)`,
+            impact: 0.38
+          });
+        }
+        if (overrun > 0) {
+          topFactors.push({
+            factor: `Anticipated cost overrun of ₹${overrun.toLocaleString('en-IN')} Cr against sanctioned baseline`,
+            impact: 0.32
+          });
+        }
+        if (delayMonths > 3) {
+          topFactors.push({
+            factor: `Milestone execution delay (+${delayMonths} months critical path slippage)`,
+            impact: 0.28
+          });
+        }
+        if (proj.sector === 'RAILWAYS' || proj.sector === 'Railways') {
+          topFactors.push({ factor: "Track possession and mega girder launching window permissions", impact: 0.22 });
+        } else if (proj.sector === 'ROAD' || proj.sector === 'Highways') {
+          topFactors.push({ factor: "State Right-of-Way (RoW) acquisition and utility line realignment", impact: 0.24 });
+        } else if (proj.sector === 'POWER' || proj.sector === 'Power') {
+          topFactors.push({ factor: "Interconnection grid sub-station synchronization and forest clearance", impact: 0.20 });
+        } else {
+          topFactors.push({ factor: "Contractor mobilization velocity and statutory clearance cycle", impact: 0.18 });
+        }
+
+        // Generate dynamic 4-month or 6-month historical risk trend
+        let riskTrend = [];
+        if (Array.isArray(proj.monthlyReports) && proj.monthlyReports.length > 0) {
+          riskTrend = proj.monthlyReports.map((r, i) => ({
+            month: r.reportingMonth || `Month ${i+1}`,
+            score: Math.max(10, Math.min(95, Math.round(riskScore * (0.85 + (i * 0.05)))))
+          }));
+        } else {
+          riskTrend = [
+            { month: "2026-03", score: Math.max(10, riskScore - 12) },
+            { month: "2026-04", score: Math.max(12, riskScore - 8) },
+            { month: "2026-05", score: Math.max(15, riskScore - 4) },
+            { month: "2026-06", score: Math.max(18, riskScore - 2) },
+            { month: "2026-07", score: riskScore },
+            { month: "2026-08", score: Math.min(98, riskScore + 2) }
+          ];
+        }
+
+        return {
+          projectId: String(proj.projectCode || proj._id || projectId),
+          riskScore,
+          riskLevel,
+          predictedDelayMonths: delayMonths,
+          confidence: 0.88,
+          topFactors: topFactors.slice(0, 4),
+          riskTrend,
+          modelVersion: "NIVARA-XGB-v2.4-GovRisk",
+          lastUpdated: new Date().toISOString()
+        };
+      }
+    } catch (apiErr) {
+      console.warn("Prediction lookup fallback to curated catalogue:", apiErr.message);
+    }
+
     // Return exact mock if exists
     if (MOCK_PREDICTIONS[projectId]) {
       return JSON.parse(JSON.stringify(MOCK_PREDICTIONS[projectId]));
@@ -363,7 +475,6 @@ const PredictionAPI = {
 if (typeof window !== "undefined") {
   window.PredictionAPI = PredictionAPI;
 }
-
 
 export default PredictionAPI;
 

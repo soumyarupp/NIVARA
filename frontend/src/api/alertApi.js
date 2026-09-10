@@ -1,8 +1,8 @@
 import apiClient from './apiClient';
 
 export const alertApi = {
-  getAlerts: async () => {
-    const res = await apiClient.get('/api/alerts');
+  getAlerts: async (params = {}) => {
+    const res = await apiClient.get('/api/alerts', params);
     const alertsList = Array.isArray(res) ? res : (res?.data || res?.alerts || []);
     return { success: true, alerts: alertsList, data: alertsList };
   },
@@ -14,7 +14,11 @@ export const alertApi = {
   },
 
   acknowledgeAlert: async (id) => {
-    return apiClient.post(`/api/alerts/${id}/acknowledge`);
+    return apiClient.patch(`/api/alerts/${id}/acknowledge`);
+  },
+
+  resolveAlert: async (id, resolutionRemarks = '') => {
+    return apiClient.patch(`/api/alerts/${id}/resolve`, { resolutionRemarks });
   },
 
   generateAlert: async (projectId) => {

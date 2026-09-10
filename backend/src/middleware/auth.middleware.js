@@ -68,3 +68,60 @@ export const authenticate = async (req, res, next) => {
     return sendError(res, 'Authentication failed', [error.message], 401);
   }
 };
+
+/**
+ * Optional Authentication Middleware:
+ * If token is present and valid, attaches user context to req.user.
+ * If token is absent or invalid, proceeds gracefully with req.user = null (allowing public access).
+ */
+export const optionalAuthenticate = async (req, res, next) => {
+  try {
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.cookies && req.cookies.accessToken) {
+      token = req.cookies.accessToken;
+    }
+
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+
+    try {
+      const decoded = verifyAccessToken(token);
+      const user = await User.findById(decoded.userId)
+        .populate('organizationId', 'name code type')
+        .populate('agencyId', 'name agencyCode organizationType ministryId')
+        .populate('ministryId', 'name code');
+
+      if (user && user.status === 'ACTIVE') {
+        req.user = {
+          _id: user._id,
+          userId: user._id.toString(),
+          role: user.role,
+          agencyId: user.agencyId ? (user.agencyId._id || user.agencyId) : null,
+          agency: user.agencyId,
+          ministryId: user.ministryId ? (user.ministryId._id || user.ministryId) : null,
+          ministry: user.ministryId,
+          organizationId: user.organizationId ? (user.organizationId._id || user.organizationId) : null,
+          organization: user.organizationId,
+          fullName: user.fullName,
+          officialEmail: user.officialEmail,
+          projectIds: user.projectIds || []
+        };
+      } else {
+        req.user = null;
+      }
+    } catch (_) {
+      req.user = null;
+    }
+
+    next();
+  } catch (err) {
+    req.user = null;
+    next();
+  }
+};
+

@@ -4,29 +4,25 @@ import { sendSuccess, sendError } from '../utils/response.js';
 export async function predictPreApprovalRisk(req, res) {
   try {
     const {
-      projectName,
-      sector,
-      state,
-      agency,
-      estimatedCost,
-      landRequired,
-      forestClearanceRequired,
-      litigationRisk
+      projectName = req.body.name || 'Proposed Mega Project',
+      sector = 'Road Transport & Highways',
+      state = 'National',
+      agency = 'NHAI',
+      estimatedCost = req.body.budget !== undefined ? req.body.budget : 500,
+      landRequired = req.body.landAcquiredPercent !== undefined ? req.body.landAcquiredPercent < 90 : true,
+      forestClearanceRequired = Boolean(req.body.forestClearanceRequired),
+      litigationRisk = req.body.litigationRisk || (req.body.utilityShiftingComplexity === 'High' ? 'HIGH' : 'MEDIUM')
     } = req.body;
-
-    if (!sector || estimatedCost === undefined) {
-      return sendError(res, 'Sector and estimatedCost are required for pre-approval simulation.', [], 400);
-    }
 
     const result = await simulatePreApprovalRisk({
       projectName,
       sector,
       state,
       agency,
-      estimatedCost: Number(estimatedCost),
-      landRequired: landRequired !== false,
+      estimatedCost: Number(estimatedCost) || 500,
+      landRequired: Boolean(landRequired),
       forestClearanceRequired: Boolean(forestClearanceRequired),
-      litigationRisk: litigationRisk || 'LOW',
+      litigationRisk,
       userId: req.user ? req.user._id || req.user.id : null
     });
 
