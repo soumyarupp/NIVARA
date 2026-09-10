@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  createUser,
   inviteUser,
   listUsers,
   getUserById,
@@ -24,10 +25,17 @@ const router = Router();
 // Apply global authentication to all user management routes
 router.use(authenticate);
 
-// Invite user (IPMD_ADMIN, MINISTRY_ADMIN, AGENCY_ADMIN)
+// Create user directly (SUPER_ADMIN, IPMD_ADMIN, MINISTRY_OFFICER, MINISTRY_ADMIN, IMPLEMENTATION_AGENCY, AGENCY_ADMIN)
+router.post(
+  '/',
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
+  createUser
+);
+
+// Invite user
 router.post(
   '/invite',
-  authorize('IPMD_ADMIN', 'MINISTRY_ADMIN', 'AGENCY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
   validate(inviteUserSchema),
   inviteUser
 );
@@ -44,7 +52,7 @@ router.patch('/:id', validate(updateUserSchema), updateUser);
 // Update user status (INVITED, ACTIVE, SUSPENDED, DEACTIVATED)
 router.patch(
   '/:id/status',
-  authorize('IPMD_ADMIN', 'MINISTRY_ADMIN', 'AGENCY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
   validate(updateStatusSchema),
   updateUserStatusController
 );
@@ -52,7 +60,7 @@ router.patch(
 // Assign project to officer
 router.post(
   '/:id/assign-project',
-  authorize('IPMD_ADMIN', 'MINISTRY_ADMIN', 'AGENCY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
   validate(assignProjectSchema),
   assignProject
 );
@@ -60,7 +68,7 @@ router.post(
 // Remove project from officer
 router.delete(
   '/:id/project/:projectId',
-  authorize('IPMD_ADMIN', 'MINISTRY_ADMIN', 'AGENCY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
   validate(removeProjectSchema),
   removeProject
 );

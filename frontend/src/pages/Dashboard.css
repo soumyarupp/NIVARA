@@ -1,7 +1,13 @@
 /* ============ Reset & Base ============ */
-
-
-
+:root {
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --color-bg: #f8fafc;
+  --color-text: #0f172a;
+  --color-header: #0f172a;
+  --color-white: #ffffff;
+  --color-orange: #f59e0b;
+  --color-purple: #6366f1;
+}
 
 body {
   font-family: var(--font-main);
@@ -17,17 +23,6 @@ body {
   display: flex;
   flex-direction: column;
   width: 100%;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
 }
 
 /* ============ Header ============ */
@@ -1217,20 +1212,20 @@ button {
 .sidebar-nav-container {
   flex: 1;
   overflow-y: auto;
-  padding: 14px 10px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 .sidebar-group-title {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: #64748b;
-  margin-bottom: 6px;
-  padding-left: 6px;
+  margin-bottom: 7px;
+  padding-left: 8px;
 }
 
 .sidebar-nav-list {
@@ -1239,15 +1234,15 @@ button {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .sidebar-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
   color: #94a3b8;
@@ -1256,14 +1251,15 @@ button {
 }
 
 .sidebar-nav-item:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
 
 .sidebar-nav-item.active {
   background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(13, 148, 136, 0.25) 100%);
   color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .sidebar-nav-icon {
@@ -1273,11 +1269,12 @@ button {
 .sidebar-badge {
   margin-left: auto;
   font-size: 10px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 8px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
   background-color: #334155;
   color: #f8fafc;
+  letter-spacing: 0.3px;
 }
 
 .sidebar-footer-profile {
@@ -1917,8 +1914,8 @@ button {
 .dashboard-banner {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 24px 28px;
+  border-radius: 18px;
+  padding: 26px 30px;
   margin-bottom: 28px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
@@ -1927,8 +1924,8 @@ button {
 .dashboard-card {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 18px;
+  padding: 26px 30px;
   margin-bottom: 28px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   box-sizing: border-box;
@@ -1937,20 +1934,20 @@ button {
 .kpi-card {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 20px 24px;
+  border-radius: 18px;
+  padding: 22px 26px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 145px;
+  min-height: 148px;
   box-sizing: border-box;
   transition: all 0.2s ease;
 }
 
 .kpi-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
 }
 
 .dashboard-grid-2 {
@@ -1991,4 +1988,20 @@ button {
     gap: 16px;
   }
 }
+
+/* Common table styles for clean row heights and cell breathing room */
+.table-spacious th {
+  padding: 14px 18px !important;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-spacious td {
+  padding: 15px 18px !important;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
 

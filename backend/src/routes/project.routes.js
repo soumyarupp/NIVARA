@@ -11,7 +11,9 @@ import {
   addReportingOfficer,
   removeReportingOfficer,
   getReportingOfficers,
-  assignNodalOfficer
+  assignNodalOfficer,
+  getSimilarProjectBenchmarks,
+  recordProjectAction
 } from '../controllers/project.controller.js';
 import {
   upsertLandDetail,
@@ -48,7 +50,7 @@ router.use(authenticate);
 // Create Project & Draft Workflows
 router.post(
   '/',
-  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
   createProject
 );
 
@@ -70,9 +72,17 @@ router.post(
   submitProject
 );
 
+// Benchmark & Similar Projects for Implementation Agencies
+router.get('/similar-benchmarks', getSimilarProjectBenchmarks);
+
 // Project List & Details
 router.get('/', getProjects);
 router.get('/:id', getProjectById);
+router.post(
+  '/:id/action',
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'NODAL_OFFICER', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
+  recordProjectAction
+);
 router.patch(
   '/:id',
   authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),

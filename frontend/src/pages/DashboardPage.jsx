@@ -73,7 +73,7 @@ const DashboardPage = () => {
                   </svg>
                 </div>
                 <div className="modal-header-titles">
-                  <h2>NIVARA AI Risk Inspection: {selectedProject ? selectedProject.name : 'Central Sector Overview'}</h2>
+                  <h2>NIVARA AI Risk Inspection: {selectedProject ? (selectedProject.projectName || selectedProject.name) : 'Central Sector Overview'}</h2>
                   <p>Machine learning early-warning risk audit &amp; milestone forecasts</p>
                 </div>
               </div>

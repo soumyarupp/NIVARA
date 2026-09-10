@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { MonthlyReport } from '../models/MonthlyReport.js';
 import { Project } from '../models/Project.js';
 import { Clearance } from '../models/Clearance.js';
@@ -10,6 +11,7 @@ import { detectProgressMismatch } from '../services/mismatchDetector.js';
 import { calculateProjectRisk } from '../services/riskEngine.js';
 import { sendAlertNotificationEmail } from '../services/email.service.js';
 import { logAuditEvent } from '../services/audit.service.js';
+import { dispatchProjectAlert } from '../services/alertDispatch.service.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 /**
@@ -125,7 +127,7 @@ export async function submitMonthlyReport(req, res) {
     project.latestReportDate = new Date();
     await project.save();
 
-    // 8. Generate Alerts & Dispatch Notifications if needed
+    // 8. Generate Alerts & Dispatch Notifications if needed (Routed to Nodal, Escalated to Agency if High/Critical)
     const alertsGenerated = [];
 
     // Mismatch Alert
@@ -137,40 +139,15 @@ export async function submitMonthlyReport(req, res) {
       });
 
       if (!existingAlert) {
-        const mismatchAlert = await Alert.create({
-          projectId: project._id,
+        const mismatchAlert = await dispatchProjectAlert({
+          project,
           alertType: 'FUND_PROGRESS_MISMATCH',
           severity: mismatch.severity,
           title: `Fund vs Physical Progress Discrepancy (${mismatch.difference}%)`,
           message: mismatch.message,
-          riskScore: riskResult.riskScore,
-          assignedTo: project.nodalOfficer ? project.nodalOfficer._id : null
+          riskScore: riskResult.riskScore
         });
         alertsGenerated.push(mismatchAlert);
-
-        if (project.nodalOfficer) {
-          await Notification.create({
-            userId: project.nodalOfficer._id,
-            projectId: project._id,
-            alertId: mismatchAlert._id,
-            title: 'Fund vs Progress Mismatch Alert',
-            message: mismatch.message,
-            type: 'ALERT',
-            severity: mismatch.severity
-          });
-
-          if (['HIGH', 'CRITICAL'].includes(mismatch.severity) && (project.nodalOfficer.officialEmail || project.nodalOfficer.email)) {
-            sendAlertNotificationEmail({
-              to: project.nodalOfficer.officialEmail || project.nodalOfficer.email,
-              recipientName: project.nodalOfficer.fullName || project.nodalOfficer.name,
-              projectTitle: project.projectName,
-              alertTitle: `Fund-Progress Disparity Alert (${mismatch.difference}%)`,
-              alertMessage: mismatch.message,
-              severity: mismatch.severity,
-              riskScore: riskResult.riskScore
-            });
-          }
-        }
       }
     }
 
@@ -184,28 +161,15 @@ export async function submitMonthlyReport(req, res) {
       });
 
       if (!existingRiskAlert) {
-        const riskAlert = await Alert.create({
-          projectId: project._id,
+        const riskAlert = await dispatchProjectAlert({
+          project,
           alertType,
           severity: riskResult.riskLevel,
           title: `${riskResult.riskLevel} Project Risk (${riskResult.riskScore}/100)`,
           message: `Project risk escalated to ${riskResult.riskScore}/100 based on physical delay and financial utilization parameters.`,
-          riskScore: riskResult.riskScore,
-          assignedTo: project.nodalOfficer ? project.nodalOfficer._id : null
+          riskScore: riskResult.riskScore
         });
         alertsGenerated.push(riskAlert);
-
-        if (project.nodalOfficer) {
-          await Notification.create({
-            userId: project.nodalOfficer._id,
-            projectId: project._id,
-            alertId: riskAlert._id,
-            title: `${riskResult.riskLevel} Risk Alert: ${project.projectName}`,
-            message: `Risk score evaluated at ${riskResult.riskScore}/100.`,
-            type: 'ALERT',
-            severity: riskResult.riskLevel
-          });
-        }
       }
     }
 
@@ -242,12 +206,54 @@ export async function submitMonthlyReport(req, res) {
 }
 
 /**
+ * Get All Monthly Reports (Scoped by role or query)
+ */
+export async function getAllReports(req, res) {
+  try {
+    const { projectId, reportingMonth, limit = 100 } = req.query;
+    const filter = {};
+
+    if (projectId) {
+      filter.projectId = projectId;
+    }
+    if (reportingMonth) {
+      filter.reportingMonth = reportingMonth;
+    }
+
+    // Role-based filtering if Reporting Officer
+    if (req.user?.role === 'REPORTING_OFFICER') {
+      const userProjectIds = req.user.projectIds || [];
+      filter.$or = [
+        { submittedBy: req.user._id || req.user.id },
+        ...(userProjectIds.length > 0 ? [{ projectId: { $in: userProjectIds } }] : [])
+      ];
+    }
+
+    const reports = await MonthlyReport.find(filter)
+      .populate('projectId', 'projectName name projectCode sector state originalProjectCost riskLevel riskScore')
+      .populate('submittedBy', 'name fullName officialEmail designation')
+      .sort({ createdAt: -1, reportingMonth: -1 })
+      .limit(Number(limit));
+
+    return sendSuccess(res, 'Monthly reports list retrieved.', reports);
+  } catch (err) {
+    return sendError(res, err.message || 'Failed to fetch reports list.', [], 500);
+  }
+}
+
+/**
  * Get Reports for a Project
  */
 export async function getProjectReports(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+      else return sendSuccess(res, 'Monthly reports retrieved.', []);
+    }
     const reports = await MonthlyReport.find({ projectId })
+      .populate('projectId', 'projectName name projectCode sector state originalProjectCost riskLevel riskScore')
       .populate('submittedBy', 'name fullName officialEmail designation')
       .sort({ reportingMonth: -1 });
 
@@ -273,5 +279,64 @@ export async function getReportById(req, res) {
     return sendSuccess(res, 'Report details retrieved.', report);
   } catch (err) {
     return sendError(res, err.message || 'Failed to fetch report.', [], 500);
+  }
+}
+
+/**
+ * Generate Comprehensive Project Analytics / Executive Report
+ */
+export async function generateExecutiveReport(req, res) {
+  try {
+    const { projectId, reportType = 'RISK_ASSESSMENT' } = req.body;
+    
+    let project = null;
+    if (projectId) {
+      project = await Project.findOne({
+        $or: [{ _id: projectId.match(/^[0-9a-fA-F]{24}$/) ? projectId : null }, { projectCode: projectId }]
+      })
+      .populate('ministryId', 'name code')
+      .populate('implementationAgencyId', 'name agencyCode')
+      .populate('nodalOfficer', 'name fullName officialEmail phone');
+    }
+
+    if (!project) {
+      project = await Project.findOne().sort({ createdAt: -1 });
+    }
+
+    const latestReports = project 
+      ? await MonthlyReport.find({ projectId: project._id }).sort({ reportingMonth: -1 }).limit(6)
+      : [];
+
+    const alerts = project
+      ? await Alert.find({ projectId: project._id }).sort({ createdAt: -1 }).limit(10)
+      : [];
+
+    const generatedData = {
+      reportId: `NIV-REP-${Date.now().toString().slice(-6)}`,
+      reportType,
+      generatedAt: new Date().toISOString(),
+      project: project || { projectName: 'National Infrastructure Portfolio Summary' },
+      historicalTrend: latestReports.map(r => ({
+        month: r.reportingMonth,
+        expenditure: r.expenditure,
+        physicalProgress: r.actualPhysicalProgress,
+        financialProgress: r.actualFinancialProgress,
+        riskScore: r.riskScore
+      })),
+      recentAlerts: alerts,
+      summary: {
+        riskLevel: project?.riskLevel || 'MODERATE',
+        riskScore: project?.riskScore || 52,
+        financialProgress: project?.financialProgress || 0,
+        physicalProgress: project?.physicalProgress || 0,
+        recommendation: project?.riskLevel === 'HIGH' || project?.riskLevel === 'CRITICAL'
+          ? 'Urgent inter-ministerial coordination meeting recommended to resolve critical clearances.'
+          : 'Project executing within acceptable variance thresholds.'
+      }
+    };
+
+    return sendSuccess(res, 'Executive report generated successfully.', generatedData);
+  } catch (err) {
+    return sendError(res, err.message || 'Failed to generate report.', [], 500);
   }
 }

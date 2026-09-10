@@ -1,9 +1,15 @@
+import mongoose from 'mongoose';
 import { Clearance } from '../models/Clearance.js';
+import { Project } from '../models/Project.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 export async function addClearance(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+    }
     const clearance = await Clearance.create({ ...req.body, projectId });
     return sendSuccess(res, 'Clearance added successfully.', clearance, 201);
   } catch (err) {
@@ -13,7 +19,12 @@ export async function addClearance(req, res) {
 
 export async function getClearancesByProject(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+      else return sendSuccess(res, 'Clearances retrieved.', []);
+    }
     const clearances = await Clearance.find({ projectId }).sort({ createdAt: -1 });
     return sendSuccess(res, 'Clearances retrieved.', clearances);
   } catch (err) {

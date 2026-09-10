@@ -1,19 +1,32 @@
-/**
- * dashboardApi.js
- * API Service for Dashboard Overview
- * Endpoint: GET /api/dashboard/overview
- */
-
-import apiClient, { isMockMode } from './apiClient';
-import { mockDashboardOverview } from '../mock/dashboard';
+import apiClient from './apiClient';
 
 export const dashboardApi = {
   getOverview: async () => {
-    if (isMockMode()) {
-      await new Promise(r => setTimeout(r, 200));
-      return mockDashboardOverview;
-    }
     return apiClient.get('/api/dashboard/overview');
+  },
+
+  getSummary: async () => {
+    return apiClient.get('/api/dashboard/summary');
+  },
+
+  getRiskDistribution: async () => {
+    return apiClient.get('/api/dashboard/risk-distribution');
+  },
+
+  getDelayReasons: async () => {
+    return apiClient.get('/api/dashboard/delay-reasons');
+  },
+
+  getStateSummary: async () => {
+    return apiClient.get('/api/dashboard/state-summary');
+  },
+
+  getSectorSummary: async () => {
+    return apiClient.get('/api/dashboard/sector-summary');
+  },
+
+  getMinistrySummary: async () => {
+    return apiClient.get('/api/dashboard/ministry-summary');
   }
 };
 

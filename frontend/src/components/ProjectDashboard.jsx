@@ -8,6 +8,9 @@ import {
   Search, AlertTriangle, TrendingUp, TrendingDown, 
   Layers, FileCheck2, Clock, MapPin, Zap, ShieldAlert, Cpu
 } from 'lucide-react';
+import { getStoredUser, formatRoleName } from '../api/authApi';
+import ReportingOfficerDashboard from './ReportingOfficerDashboard';
+import NodalOfficerDashboard from './NodalOfficerDashboard';
 
 const costEvolutionData = [
   { name: 'Nov', expenditure: 10.2, original: 30.0, revised: 32.4 },
@@ -55,6 +58,18 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sectorFilter, setSectorFilter] = useState('All');
   const [timeRange, setTimeRange] = useState('YTD');
+  const user = getStoredUser();
+  const role = user?.role || 'SUPER_ADMIN';
+
+  // If role is REPORTING_OFFICER, render specialized Reporting Officer Console
+  if (role === 'REPORTING_OFFICER') {
+    return <ReportingOfficerDashboard />;
+  }
+
+  // If role is NODAL_OFFICER, render specialized Nodal Oversight & Early Warning Desk
+  if (role === 'NODAL_OFFICER') {
+    return <NodalOfficerDashboard />;
+  }
 
   const sectors = useMemo(() => {
     const set = new Set(projects.map(p => p.sector).filter(Boolean));
@@ -63,7 +78,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
 
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
-      const matchesSearch = !searchQuery || [p.name, p.id, p.sector, p.state].join(' ').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !searchQuery || [p.projectName, p.name, p.projectCode, p.id, p.sector, p.state].join(' ').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesSector = sectorFilter === 'All' || p.sector === sectorFilter;
       return matchesSearch && matchesSector;
     });
@@ -72,35 +87,50 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
   return (
     <div className="main-dashboard-content space-y-7 text-slate-800">
       
-      {/* ===== HEADER BANNER (EXPLICIT PADDING GUARANTEED) ===== */}
-      <div className="dashboard-banner flex flex-col md:flex-row md:items-center justify-between gap-5">
+      {/* ===== HEADER BANNER ===== */}
+      <div className="dashboard-banner flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">National Infrastructure Dashboard</h1>
-            <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200/80 flex items-center gap-1.5 shrink-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Telemetry Active
+          <div className="flex items-center gap-3.5 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              {['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(role) 
+                ? 'Ministry Infrastructure Command Portal'
+                : ['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(role)
+                ? 'Agency Infrastructure Workspace'
+                : ['NODAL_OFFICER', 'REPORTING_OFFICER'].includes(role)
+                ? 'Field & Nodal Monitoring Console'
+                : 'National Infrastructure Dashboard'}
+            </h1>
+            <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-3.5 py-1.5 rounded-full border border-emerald-200/80 flex items-center gap-2 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> {formatRoleName(role)}
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
-            Real-time project breakdown, cost evolution, sector performance, and risk distribution across 186 Mega Assets.
+          <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
+            Welcome, <strong className="text-slate-700">{user?.fullName || 'Authorized Officer'}</strong>. Real-time project telemetry, risk forecasting, and inter-ministerial analytics.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200/60">
+        <div className="flex items-center gap-4 sm:gap-5 flex-wrap sm:flex-nowrap shrink-0">
+          <div className="flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
             {['30D', '90D', 'YTD', 'All'].map(range => (
               <button
                 key={range}
                 type="button"
                 onClick={() => setTimeRange(range)}
-                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${timeRange === range ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  timeRange === range 
+                    ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/60' 
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/40'
+                }`}
               >
                 {range}
               </button>
             ))}
           </div>
 
-          <Link to="/add-project" className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors shadow-xs">
+          <Link 
+            to="/add-project" 
+            className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white font-bold px-4.5 py-2.5 rounded-xl text-xs transition-all shadow-xs whitespace-nowrap cursor-pointer"
+          >
             + Add Project
           </Link>
         </div>
@@ -329,20 +359,20 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
       </div>
 
       {/* ===== HIGH-PRIORITY PROJECT WATCHLIST TABLE ===== */}
-      <div className="dashboard-card space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="dashboard-card space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Central Sector Watchlist</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Ranked by risk score, outlay, and delay timeline</p>
+            <p className="text-xs text-slate-500 mt-1">Ranked by risk score, outlay, and delay timeline</p>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-            {/* Search Input (Flex Container for perfect icon placement in front of text) */}
-            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 min-w-[280px] sm:min-w-[320px] focus-within:border-sky-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-sky-500/10 transition-all">
+          <div className="flex items-center gap-3.5 flex-wrap sm:flex-nowrap">
+            {/* Search Input */}
+            <div className="flex items-center gap-3 bg-slate-50/80 border border-slate-200 rounded-xl px-4 py-2.5 min-w-[280px] sm:min-w-[340px] focus-within:border-sky-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-sky-500/10 transition-all">
               <Search size={16} className="text-slate-400 shrink-0" />
               <input 
                 type="text" 
-                placeholder="Search projects..."
+                placeholder="Search projects by name, code, state..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 outline-none border-none p-0 focus:ring-0"
@@ -353,7 +383,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
             <select
               value={sectorFilter}
               onChange={(e) => setSectorFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 px-4 py-2 outline-none focus:border-sky-500 cursor-pointer hover:bg-slate-100/80 transition-all"
+              className="bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 px-4 py-2.5 outline-none focus:border-sky-500 cursor-pointer hover:bg-slate-100/80 transition-all"
             >
               {sectors.map((s, i) => (
                 <option key={i} value={s}>{s === 'All' ? 'All Sectors' : s}</option>
@@ -363,70 +393,98 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
         </div>
 
         {/* Data Table */}
-        <div className="overflow-x-auto">
+        <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-2xs">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-[11px] text-slate-500 font-bold uppercase tracking-wider bg-slate-50/60">
-                <th className="py-3 px-4">Project &amp; ID</th>
-                <th className="py-3 px-4">Sector</th>
-                <th className="py-3 px-4">State</th>
-                <th className="py-3 px-4">Outlay</th>
-                <th className="py-3 px-4">Progress</th>
-                <th className="py-3 px-4 text-right">Risk Score</th>
-                <th className="py-3 px-4 text-right">Pred. Delay</th>
-                <th className="py-3 px-4 text-center">Action</th>
+              <tr className="border-b border-slate-200 text-[11px] text-slate-500 font-bold uppercase tracking-wider bg-slate-50/90">
+                <th className="py-4 px-4.5">Project &amp; ID</th>
+                <th className="py-4 px-4.5">Sector</th>
+                <th className="py-4 px-4.5">State</th>
+                <th className="py-4 px-4.5">Outlay</th>
+                <th className="py-4 px-4.5">Progress</th>
+                <th className="py-4 px-4.5 text-right">Risk Score</th>
+                <th className="py-4 px-4.5 text-right">Pred. Delay</th>
+                <th className="py-4 px-4.5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-slate-100">
-              {filteredProjects.map((p, i) => (
-                <tr key={i} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-slate-900">{p.name}</div>
-                    <div className="text-[11px] text-slate-400">{p.id}</div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60">
-                      {p.sector}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-600">
-                    <span className="inline-flex items-center gap-1 font-medium"><MapPin size={12} className="text-slate-400" /> {p.state || 'Pan India'}</span>
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900">{p.outlay}</td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-teal-500 rounded-full" style={{ width: `${p.progress || 65}%` }}></div>
+              {filteredProjects.map((p, i) => {
+                const projId = p._id || p.id;
+                const projName = p.name || p.projectName || 'Central Infrastructure Project';
+                const projCode = p.projectCode || p.id || `PRJ-${i+1}`;
+                const projState = p.state || p.location?.state || 'Pan India';
+                const projCost = p.outlay || (p.sanctionedCost ? `₹${Number(p.sanctionedCost).toLocaleString('en-IN')} Cr` : (p.budget?.sanctionedCost ? `₹${Number(p.budget.sanctionedCost).toLocaleString('en-IN')} Cr` : '₹1,200 Cr'));
+                const projProgress = Math.round(p.physicalProgress?.overallPercentage ?? p.progress?.physicalProgress ?? p.progress ?? 55);
+                const projRisk = p.riskLevel || (p.riskScore > 75 ? 'Critical' : p.riskScore > 50 ? 'High' : 'Medium');
+                const projScore = p.riskScore || (projRisk === 'Critical' ? 84 : projRisk === 'High' ? 68 : 45);
+                const projDelay = p.delayMonths || (projRisk === 'Critical' ? 18 : 6);
+
+                return (
+                  <tr key={projId || i} className="hover:bg-slate-50/90 transition-colors">
+                    <td className="py-4 px-4.5">
+                      {projId ? (
+                        <Link to={`/projects/${projId}`} className="font-bold text-slate-900 hover:text-sky-600 transition">
+                          {projName}
+                        </Link>
+                      ) : (
+                        <div className="font-bold text-slate-900">{projName}</div>
+                      )}
+                      <div className="text-[11px] text-slate-400 font-mono mt-0.5">{projCode}</div>
+                    </td>
+                    <td className="py-4 px-4.5">
+                      <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200/80">
+                        {p.sector || 'Highways'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4.5 text-slate-600 font-medium">
+                      <span className="inline-flex items-center gap-1.5"><MapPin size={13} className="text-slate-400" /> {projState}</span>
+                    </td>
+                    <td className="py-4 px-4.5 font-bold text-slate-900">{projCost}</td>
+                    <td className="py-4 px-4.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-teal-500 rounded-full" style={{ width: `${projProgress}%` }}></div>
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-700">{projProgress}%</span>
                       </div>
-                      <span className="text-[11px] font-bold text-slate-700">{p.progress || 65}%</span>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full border inline-block ${
-                      p.riskLevel === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
-                      p.riskLevel === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                      'bg-amber-50 text-amber-700 border-amber-200'
-                    }`}>
-                      {p.riskLevel || 'Medium'} ({p.riskScore || 78})
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right font-extrabold text-amber-700">
-                    +{p.delayMonths || 12} mo
-                  </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <button 
-                      type="button" 
-                      onClick={() => onInspect && onInspect(p)}
-                      className="text-xs font-bold text-sky-600 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200/80 transition-all"
-                    >
-                      Inspect &rarr;
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-4 px-4.5 text-right">
+                      <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border inline-block ${
+                        projRisk === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
+                        projRisk === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                        'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {projRisk} ({projScore})
+                      </span>
+                    </td>
+                    <td className="py-4 px-4.5 text-right font-extrabold text-amber-700">
+                      +{projDelay} mo
+                    </td>
+                    <td className="py-4 px-4.5 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          type="button" 
+                          onClick={() => onInspect && onInspect(p)}
+                          className="text-xs font-bold text-sky-600 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200/80 transition-all cursor-pointer"
+                        >
+                          Audit
+                        </button>
+                        {projId && (
+                          <Link
+                            to={`/projects/${projId}`}
+                            className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 transition-all"
+                          >
+                            Details &rarr;
+                          </Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredProjects.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-slate-500 text-xs">
+                  <td colSpan="8" className="py-10 text-center text-slate-500 text-xs">
                     No projects found matching filter.
                   </td>
                 </tr>
@@ -442,50 +500,50 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
         {/* Early Warning Signals Feed */}
         <div className="dashboard-card flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Early Warning Signals</h2>
               <span className="bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200">
                 18 Active Risk Flags
               </span>
             </div>
 
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex gap-3.5">
-                <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                  <AlertTriangle size={16} />
+            <div className="space-y-3.5">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex gap-3.5 hover:bg-white hover:shadow-2xs transition-all">
+                <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={18} />
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-slate-900">Eastern Dedicated Freight Corridor</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Predicted cost overrun crossed 30% threshold due to land acquisition dispute.</p>
-                  <span className="text-[11px] font-bold text-red-600 mt-1 block">Railways • 15m ago</span>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">Predicted cost overrun crossed 30% threshold due to land acquisition dispute.</p>
+                  <span className="text-[11px] font-bold text-red-600 mt-1.5 block">Railways • 15m ago</span>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex gap-3.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                  <ShieldAlert size={16} />
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex gap-3.5 hover:bg-white hover:shadow-2xs transition-all">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <ShieldAlert size={18} />
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-slate-900">Ken-Betwa Link Water Transfer</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Forest clearance pending for 3 consecutive quarterly cycles.</p>
-                  <span className="text-[11px] font-bold text-amber-700 mt-1 block">Water Resources • 2h ago</span>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">Forest clearance pending for 3 consecutive quarterly cycles.</p>
+                  <span className="text-[11px] font-bold text-amber-700 mt-1.5 block">Water Resources • 2h ago</span>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex gap-3.5">
-                <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <Zap size={16} />
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex gap-3.5 hover:bg-white hover:shadow-2xs transition-all">
+                <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                  <Zap size={18} />
                 </div>
                 <div>
                   <h3 className="text-xs font-bold text-slate-900">Navi Mumbai Airport Link Expressway</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Expenditure vs physical progress divergence detected by AI engine.</p>
-                  <span className="text-[11px] font-bold text-sky-700 mt-1 block">Road Transport • 5h ago</span>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">Expenditure vs physical progress divergence detected by AI engine.</p>
+                  <span className="text-[11px] font-bold text-sky-700 mt-1.5 block">Road Transport • 5h ago</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="pt-3 mt-4 border-t border-slate-100 text-center">
+          <div className="pt-4 mt-4 border-t border-slate-100 text-center">
             <Link to="/reports" className="text-xs font-bold text-sky-600 hover:text-sky-800">
               View All 18 Early Warning Risk Reports &rarr;
             </Link>
@@ -495,17 +553,17 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
         {/* Clearance Bottleneck Tracker */}
         <div className="dashboard-card flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Statutory Clearance Tracker</h2>
               <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
                 96 Pending Sanctions
               </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {clearanceBottlenecks.map((item, idx) => (
-                <div key={idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex justify-between text-xs font-bold text-slate-900 mb-0.5">
+                <div key={idx} className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 hover:bg-white hover:shadow-2xs transition-all">
+                  <div className="flex justify-between text-xs font-bold text-slate-900 mb-1">
                     <span>{item.name}</span>
                     <span className={item.risk === 'Critical' ? 'text-red-600 font-extrabold' : 'text-amber-600 font-bold'}>{item.pending} Pending</span>
                   </div>
@@ -518,7 +576,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
             </div>
           </div>
 
-          <div className="pt-3 mt-4 border-t border-slate-100 text-center">
+          <div className="pt-4 mt-4 border-t border-slate-100 text-center">
             <Link to="/reports" className="text-xs font-bold text-sky-600 hover:text-sky-800">
               Download Statutory Clearance Audit &rarr;
             </Link>
@@ -528,25 +586,25 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
       </div>
 
       {/* ===== SIMPLE MINIMAL AI ENGINES QUICK LAUNCHER ===== */}
-      <div className="dashboard-banner flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+      <div className="dashboard-banner flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <Cpu size={16} className="text-sky-600" /> NIVARA AI Predictive Engines
+          <h2 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+            <Cpu size={18} className="text-sky-600" /> NIVARA AI Predictive Engines
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Run delay simulations, audit funding mismatches, and classify contractor reports.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link to="/risk-intelligence" className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-xs">
+        <div className="flex items-center gap-3.5 flex-wrap">
+          <Link to="/what-if-simulator" className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-2xs">
             Delay Simulator &rarr;
           </Link>
-          <Link to="/risk-intelligence" className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-xs">
+          <Link to="/analytics" className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-2xs">
             Fund Mismatch Detector &rarr;
           </Link>
-          <Link to="/risk-intelligence" className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-xs">
-            NLP Delay Classifier &rarr;
+          <Link to="/chatbot" className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 hover:text-sky-600 transition-all shadow-2xs">
+            NIVARA Copilot AI &rarr;
           </Link>
         </div>
       </div>

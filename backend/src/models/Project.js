@@ -22,13 +22,25 @@ const projectSchema = new mongoose.Schema(
     lineMinistryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      required: [true, 'Line Ministry is required'],
+      default: null,
       index: true
     },
     implementingAgencyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Organization',
-      required: [true, 'Implementing Agency is required'],
+      default: null,
+      index: true
+    },
+    ministryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Ministry',
+      default: null,
+      index: true
+    },
+    implementationAgencyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ImplementationAgency',
+      default: null,
       index: true
     },
     reportingOfficerId: {
@@ -37,7 +49,19 @@ const projectSchema = new mongoose.Schema(
       default: null,
       index: true
     },
+    reportingOfficers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
     nodalOfficerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true
+    },
+    nodalOfficer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null,
@@ -45,7 +69,6 @@ const projectSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['PLANNING', 'IN_PROGRESS', 'COMPLETED', 'ON_HOLD'],
       default: 'IN_PROGRESS'
     },
     budgetEstimatedInCrores: {
@@ -59,6 +82,8 @@ const projectSchema = new mongoose.Schema(
     }
   },
   {
+    strict: false,
+    strictPopulate: false,
     timestamps: true
   }
 );

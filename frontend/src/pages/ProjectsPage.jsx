@@ -49,124 +49,135 @@ const ProjectsPage = () => {
         />
 
         {/* Scrollable Main Content */}
-        <main className="admin-scrollable-content">
+        <main className="admin-scrollable-content text-slate-800">
           {/* ===== PAGE TITLE BANNER ===== */}
-          <div className="dashboard-banner mb-7">
+          <div className="dashboard-banner mb-8">
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Central Sector Projects Workspace</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
               High-priority Central Sector infrastructure assets flagged for immediate ministerial review, state risk cluster analysis, and statutory clearance tracking.
             </p>
           </div>
 
           {/* ===== PROJECTS REQUIRING ATTENTION TABLE ===== */}
-          <section className="dashboard-card mb-7" id="projects-attention">
-            <div className="flex justify-between items-end flex-wrap gap-3 mb-5">
+          <section className="dashboard-card mb-8 space-y-6" id="projects-attention">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <h2 className="text-base sm:text-lg font-bold text-slate-900">Projects Requiring Attention</h2>
-                  <span className="bg-sky-50 text-sky-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-sky-200">
+                  <span className="bg-sky-50 text-sky-700 text-xs font-bold px-3 py-1 rounded-full border border-sky-200">
                     Live Telemetry
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-1">
                   High-priority infrastructure assets flagged for immediate ministerial review and intervention.
                 </p>
               </div>
               <button
                 type="button"
-                className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all shadow-xs"
+                className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4.5 py-2.5 rounded-xl text-xs transition-all shadow-xs whitespace-nowrap self-start sm:self-auto cursor-pointer"
                 onClick={() => setActiveModal('reports')}
               >
                 View Full Prediction Reports &rarr;
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-2xs">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 text-[11px] text-slate-500 font-bold uppercase tracking-wider bg-slate-50/60">
-                    <th className="py-3.5 px-4">Project</th>
-                    <th className="py-3.5 px-4">Ministry / Agency</th>
-                    <th className="py-3.5 px-4">State</th>
-                    <th className="py-3.5 px-4">Risk Level</th>
-                    <th className="py-3.5 px-4">Delay</th>
-                    <th className="py-3.5 px-4">Primary Risk Factor</th>
-                    <th className="py-3.5 px-4 text-right">Action</th>
+                  <tr className="border-b border-slate-200 text-[11px] text-slate-500 font-bold uppercase tracking-wider bg-slate-50/90">
+                    <th className="py-4 px-4.5">Project</th>
+                    <th className="py-4 px-4.5">Ministry / Agency</th>
+                    <th className="py-4 px-4.5">State</th>
+                    <th className="py-4 px-4.5">Risk Level</th>
+                    <th className="py-4 px-4.5">Delay</th>
+                    <th className="py-4 px-4.5">Primary Risk Factor</th>
+                    <th className="py-4 px-4.5 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs divide-y divide-slate-100">
-                  {attentionProjects.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-slate-900">{p.name}</div>
-                        <div className="text-[11px] font-mono text-slate-400">{p.id}</div>
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-700">{p.agency}</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-700">{p.state}</td>
-                      <td className="py-3.5 px-4">
-                        <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full border inline-block ${
-                          p.riskLevel === 'Critical' ? 'bg-red-50 text-red-700 border-red-200' :
-                          p.riskLevel === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                          'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}>
-                          {p.riskLevel}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-extrabold text-red-700">+{p.delayDays} days</td>
-                      <td className="py-3.5 px-4 text-slate-700">{p.primaryRisk}</td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setActiveModal('reports')}
-                          className="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 px-3 py-1 rounded-lg text-xs font-bold transition-all"
-                        >
-                          Inspect
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {attentionProjects.map((p, index) => {
+                    const name = p.projectName || p.name || 'Unnamed Project';
+                    const code = p.projectCode || p.id || `PRJ-${index + 1}`;
+                    const agency = p.implementationAgencyId?.agencyCode || p.implementationAgencyId?.name || p.agency || 'Central Agency';
+                    const state = p.state || 'National';
+                    const risk = p.riskLevel || 'MEDIUM';
+                    const delay = p.delayDays !== undefined ? p.delayDays : 0;
+                    const primary = p.primaryRisk || p.subSector || p.sector || 'Schedule Variance';
+
+                    return (
+                      <tr key={p._id || p.id || index} className="hover:bg-slate-50/90 transition-colors">
+                        <td className="py-4 px-4.5">
+                          <div className="font-bold text-slate-900">{name}</div>
+                          <div className="text-[11px] font-mono text-slate-400 mt-0.5">{code}</div>
+                        </td>
+                        <td className="py-4 px-4.5 font-semibold text-slate-700">{agency}</td>
+                        <td className="py-4 px-4.5 font-semibold text-slate-700">{state}</td>
+                        <td className="py-4 px-4.5">
+                          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border inline-block ${
+                            risk.toUpperCase() === 'CRITICAL' ? 'bg-red-50 text-red-700 border-red-200' :
+                            risk.toUpperCase() === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                            risk.toUpperCase() === 'LOW' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {risk}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4.5 font-extrabold text-red-700">+{delay} days</td>
+                        <td className="py-4 px-4.5 text-slate-700 font-medium">{primary}</td>
+                        <td className="py-4 px-4.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setActiveModal('reports')}
+                            className="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                          >
+                            Inspect
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </section>
 
           {/* ===== NATIONAL INFRASTRUCTURE RISK MAP ===== */}
-          <section className="dashboard-card mb-7" id="risk-map">
-            <div className="mb-4">
-              <div className="flex items-center gap-2">
+          <section className="dashboard-card mb-8 space-y-6" id="risk-map">
+            <div>
+              <div className="flex items-center gap-2.5">
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">National Infrastructure Risk Map</h2>
-                <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-200">
+                <span className="bg-amber-50 text-amber-700 text-xs font-bold px-3 py-1 rounded-full border border-amber-200">
                   State Clusters
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 mt-1">
                 Spatial distribution of project risks across Indian States and Union Territories.
               </p>
             </div>
 
-            <div className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
-              <div className="flex justify-between items-center flex-wrap gap-3 mb-4">
+            <div className="border border-slate-200 rounded-2xl p-6 bg-slate-50/60 space-y-5">
+              <div className="flex justify-between items-center flex-wrap gap-4">
                 <span className="text-xs font-bold text-slate-900">State &amp; Corridor Risk Clusters</span>
-                <div className="flex gap-4 text-xs font-bold">
-                  <span className="text-red-600">● Critical (18)</span>
-                  <span className="text-orange-600">● High (44)</span>
-                  <span className="text-amber-600">● Medium (52)</span>
-                  <span className="text-emerald-600">● Low (72)</span>
+                <div className="flex gap-4 text-xs font-bold flex-wrap">
+                  <span className="text-red-600 bg-red-50 px-2.5 py-1 rounded-lg border border-red-200">● Critical (18)</span>
+                  <span className="text-orange-600 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200">● High (44)</span>
+                  <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">● Medium (52)</span>
+                  <span className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">● Low (72)</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4.5">
                 {overview.stateRiskOverview && overview.stateRiskOverview.map((item, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between">
+                  <div key={idx} className="bg-white p-4.5 rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-3 hover:shadow-xs transition-all">
                     <div>
                       <strong className="text-xs font-bold text-slate-900 block">{item.state} State Cluster</strong>
-                      <span className="text-[11px] text-slate-500">Primary Concern: {item.primaryIssue}</span>
+                      <span className="text-[11px] text-slate-500 mt-0.5 block">Primary Concern: {item.primaryIssue}</span>
                     </div>
-                    <div className="text-right">
-                      <span className="bg-red-50 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-red-200 inline-block">
+                    <div className="text-right shrink-0">
+                      <span className="bg-red-50 text-red-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-red-200 inline-block">
                         {item.criticalCount} Critical
                       </span>
-                      <div className="text-[11px] text-slate-500 mt-1">{item.activeProjects} Projects</div>
+                      <div className="text-[11px] text-slate-500 mt-1 font-medium">{item.activeProjects} Projects</div>
                     </div>
                   </div>
                 ))}

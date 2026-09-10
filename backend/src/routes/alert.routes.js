@@ -15,13 +15,13 @@ router.get('/', getAlerts);
 
 router.patch(
   '/:id/acknowledge',
-  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'NODAL_OFFICER', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'NODAL_OFFICER', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),
   acknowledgeAlert
 );
 
 router.patch(
   '/:id/resolve',
-  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'NODAL_OFFICER', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'NODAL_OFFICER', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN'),
   resolveAlert
 );
 

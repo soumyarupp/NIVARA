@@ -3,7 +3,7 @@
    Design Language: Deep Indigo/Teal Gradient Accents + Light Blue Surface
    ========================================================================== */
 
-:root {
+.add-project-page-root {
   --color-dark: #17181d;
   --color-dark-surface: #1e2433;
   --color-purple: #6b4ee6;
@@ -27,15 +27,7 @@
 
   --font-main: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'Courier New', Courier, monospace;
-}
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-.add-project-page-root {
   font-family: var(--font-main);
   background-color: var(--color-bg);
   color: var(--color-text-main);
@@ -43,6 +35,12 @@
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
+}
+
+.add-project-page-root *,
+.add-project-page-root *::before,
+.add-project-page-root *::after {
+  box-sizing: border-box;
 }
 
 a {

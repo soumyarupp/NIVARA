@@ -1,9 +1,15 @@
+import mongoose from 'mongoose';
 import { ProjectDocument } from '../models/ProjectDocument.js';
+import { Project } from '../models/Project.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 export async function uploadDocuments(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+    }
     const { documentType, title } = req.body;
     const userId = req.user._id || req.user.id;
 
@@ -35,7 +41,12 @@ export async function uploadDocuments(req, res) {
 
 export async function getDocumentsByProject(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+      else return sendSuccess(res, 'Project documents retrieved.', []);
+    }
     const documents = await ProjectDocument.find({ projectId })
       .populate('uploadedBy', 'name fullName officialEmail')
       .sort({ uploadedAt: -1 });

@@ -1,6 +1,8 @@
 import { User } from '../models/User.js';
 import { RefreshToken } from '../models/RefreshToken.js';
 import { Organization } from '../models/Organization.js';
+import { ImplementationAgency } from '../models/ImplementationAgency.js';
+import { Ministry } from '../models/Ministry.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import {
   generateAccessToken,
@@ -17,6 +19,8 @@ export const createSessionTokens = async ({ user, ipAddress, userAgent }) => {
   const accessPayload = {
     userId: user._id.toString(),
     role: user.role,
+    agencyId: user.agencyId ? user.agencyId.toString() : null,
+    ministryId: user.ministryId ? user.ministryId.toString() : null,
     organizationId: user.organizationId ? user.organizationId.toString() : null
   };
   const accessToken = generateAccessToken(accessPayload);
@@ -120,6 +124,16 @@ export const loginUser = async ({ officialEmail, password, ipAddress, userAgent 
     organization = await Organization.findById(user.organizationId).select('name code type');
   }
 
+  let agency = null;
+  if (user.agencyId) {
+    agency = await ImplementationAgency.findById(user.agencyId).select('name agencyCode organizationType ministryId');
+  }
+
+  let ministry = null;
+  if (user.ministryId) {
+    ministry = await Ministry.findById(user.ministryId).select('name code');
+  }
+
   await logAuditEvent({
     userId: user._id,
     action: 'LOGIN_SUCCESS',
@@ -131,17 +145,26 @@ export const loginUser = async ({ officialEmail, password, ipAddress, userAgent 
   return {
     user: {
       id: user._id,
-      fullName: user.fullName,
-      officialEmail: user.officialEmail,
-      mobileNumber: user.mobileNumber,
+      _id: user._id,
+      name: user.name || user.fullName,
+      fullName: user.fullName || user.name,
+      email: user.email || user.officialEmail,
+      officialEmail: user.officialEmail || user.email,
+      mobileNumber: user.mobileNumber || user.phone,
+      phone: user.phone || user.mobileNumber,
       designation: user.designation,
       employeeId: user.employeeId,
       department: user.department,
       role: user.role,
+      agencyId: user.agencyId,
+      agency,
+      ministryId: user.ministryId,
+      ministry,
       organizationId: user.organizationId,
       organization,
-      projectIds: user.projectIds,
+      projectIds: user.projectIds || [],
       status: user.status,
+      isActive: user.isActive !== false && user.status !== 'DEACTIVATED',
       lastLoginAt: user.lastLoginAt
     },
     ...tokens

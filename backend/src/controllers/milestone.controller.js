@@ -1,9 +1,15 @@
+import mongoose from 'mongoose';
 import { Milestone } from '../models/Milestone.js';
+import { Project } from '../models/Project.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 export async function addMilestone(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+    }
     const milestone = await Milestone.create({ ...req.body, projectId });
     return sendSuccess(res, 'Milestone added successfully.', milestone, 201);
   } catch (err) {
@@ -13,7 +19,12 @@ export async function addMilestone(req, res) {
 
 export async function getMilestonesByProject(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+      else return sendSuccess(res, 'Milestones retrieved.', []);
+    }
     const milestones = await Milestone.find({ projectId }).sort({ originalStartDate: 1 });
     return sendSuccess(res, 'Milestones retrieved.', milestones);
   } catch (err) {

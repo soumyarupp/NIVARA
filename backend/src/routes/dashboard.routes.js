@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getDashboardSummary,
+  getDashboardOverview,
   getRiskDistribution,
   getDelayReasons,
   getStateSummary,
@@ -13,6 +14,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get('/overview', getDashboardOverview);
 router.get('/summary', getDashboardSummary);
 router.get('/risk-distribution', getRiskDistribution);
 router.get('/delay-reasons', getDelayReasons);

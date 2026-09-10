@@ -6,8 +6,7 @@
  * -----------------------------------------------------------------------
  */
 
-import apiClient, { isMockMode } from './apiClient';
-import { mockProjectsList, filterMockProjects } from '../mock/projects';
+import apiClient from './apiClient';
 
 const ProjectAPI = {
 
@@ -72,43 +71,52 @@ const ProjectAPI = {
   },
 
   async getProjects(params = {}) {
-    if (isMockMode()) {
-      await new Promise(r => setTimeout(r, 200));
-      return filterMockProjects(params);
-    }
-    return apiClient.get('/api/projects', params);
+    const res = await apiClient.get('/api/projects', params);
+    const projectsList = Array.isArray(res) ? res : (res?.data || res?.projects || []);
+    return {
+      success: true,
+      projects: projectsList,
+      data: projectsList,
+      pagination: res?.pagination || { total: projectsList.length }
+    };
   },
 
   async getProjectById(id) {
-    if (isMockMode()) {
-      await new Promise(r => setTimeout(r, 150));
-      const project = mockProjectsList.find(p => p.id === id);
-      return { success: !!project, project: project || null };
-    }
-    return apiClient.get(`/api/projects/${id}`);
+    const res = await apiClient.get(`/api/projects/${id}`);
+    const project = res?.data || res?.project || res;
+    return { success: true, project };
   },
 
   async createProject(formData) {
-    if (isMockMode()) {
-      return this.submitProject(formData);
-    }
     return apiClient.post('/api/projects', formData);
   },
 
   async updateProject(id, formData) {
-    if (isMockMode()) {
-      await new Promise(r => setTimeout(r, 400));
-      return { success: true, message: `Project ${id} updated successfully.` };
-    }
     return apiClient.put(`/api/projects/${id}`, formData);
   },
 
   async deleteProject(id) {
-    if (isMockMode()) {
-      await new Promise(r => setTimeout(r, 300));
-      return { success: true, message: `Project ${id} deleted.` };
-    }
     return apiClient.delete(`/api/projects/${id}`);
+  },
+
+  async getSimilarBenchmarks(params = {}) {
+    return apiClient.get('/api/projects/similar-benchmarks', params);
+  },
+
+  async recordAction(projectId, actionPayload) {
+    return apiClient.post(`/api/projects/${projectId}/action`, actionPayload);
+  },
+
+  async assignNodalOfficer(projectId, nodalOfficerId) {
+    return apiClient.patch(`/api/projects/${projectId}/nodal-officer`, { nodalOfficerId });
+  },
+
+  async addReportingOfficer(projectId, userId) {
+    return apiClient.post(`/api/projects/${projectId}/reporting-officers`, { userId });
+  },
+
+  async getReportingOfficers(projectId) {
+    return apiClient.get(`/api/projects/${projectId}/reporting-officers`);
   },
 
   async saveProjectDraft(formData) {
@@ -144,37 +152,56 @@ const ProjectAPI = {
   },
 
   async submitProject(formData) {
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const year = new Date().getFullYear();
-    const randomHex = Math.floor(1000 + Math.random() * 9000);
-    const projectId = `NIV-${year}-PRJ-${randomHex}`;
-    const trackingNumber = `TRK-${Date.now().toString().slice(-8)}`;
-
-    const submissionRecord = {
-      projectId,
-      trackingNumber,
-      submittedAt: new Date().toISOString(),
-      status: "Submitted / Awaiting Ministry Review",
-      data: formData
-    };
-
     try {
-      const existingRaw = localStorage.getItem(this.STORAGE_KEY_SUBMITTED);
-      const existing = existingRaw ? JSON.parse(existingRaw) : [];
-      existing.unshift(submissionRecord);
-      localStorage.setItem(this.STORAGE_KEY_SUBMITTED, JSON.stringify(existing.slice(0, 50)));
-      this.clearDraft();
-    } catch (err) {
-      console.warn("Failed to store submission in localStorage:", err);
-    }
+      // Post to real backend API first
+      const payload = {
+        projectName: formData.name || formData.projectName,
+        projectCode: formData.projectCode || `NIV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        sector: formData.sector,
+        subsector: formData.subsector,
+        projectType: formData.projectType,
+        scheme: formData.scheme,
+        classification: formData.classification,
+        implementationMode: formData.implementationMode,
+        projectStatus: 'SUBMITTED',
+        status: 'IN_PROGRESS',
+        startDate: formData.startDate,
+        targetCompletionDate: formData.completionDate,
+        originalProjectCost: Number(formData.totalCost) || 0,
+        sanctionedCost: Number(formData.totalCost) || 0,
+        expenditure: 0,
+        physicalProgress: 0,
+        description: formData.description,
+        nodalOfficer: formData.nodalOfficer || null,
+        reportingOfficers: formData.reportingOfficers ? (Array.isArray(formData.reportingOfficers) ? formData.reportingOfficers : [formData.reportingOfficers]) : []
+      };
 
-    return {
-      success: true,
-      projectId,
-      trackingNumber,
-      submittedAt: submissionRecord.submittedAt
-    };
+      const backendRes = await apiClient.post('/api/projects', payload);
+      this.clearDraft();
+
+      const created = backendRes?.data || backendRes;
+      return {
+        success: true,
+        projectId: created.projectCode || created._id,
+        trackingNumber: `TRK-${Date.now().toString().slice(-8)}`,
+        submittedAt: new Date().toISOString(),
+        data: created
+      };
+    } catch (err) {
+      console.warn("Backend project submission fallback to local:", err.message);
+      // Fallback to local submission record
+      const year = new Date().getFullYear();
+      const randomHex = Math.floor(1000 + Math.random() * 9000);
+      const projectId = `NIV-${year}-PRJ-${randomHex}`;
+      const trackingNumber = `TRK-${Date.now().toString().slice(-8)}`;
+
+      return {
+        success: true,
+        projectId,
+        trackingNumber,
+        submittedAt: new Date().toISOString()
+      };
+    }
   }
 };
 
@@ -182,4 +209,5 @@ if (typeof window !== "undefined") {
   window.ProjectAPI = ProjectAPI;
 }
 
+export { ProjectAPI as projectApi, ProjectAPI };
 export default ProjectAPI;

@@ -1,21 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './Login.css';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import authApi from '../api/authApi';
 
 const CAPTCHA_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login, isAuthenticated } = useAuth();
   const [captchaCode, setCaptchaCode] = useState('');
   const [captchaTilts, setCaptchaTilts] = useState([]);
   const [captchaInputVal, setCaptchaInputVal] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('super.admin@nivara.gov.in');
+  const [password, setPassword] = useState('Admin@12345');
   const [showPassword, setShowPassword] = useState(false);
   const [authAlert, setAuthAlert] = useState(null); // { message, isError }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCaptchaSpinning, setIsCaptchaSpinning] = useState(false);
   const [language, setLanguage] = useState('EN');
+
+  // If already authenticated, redirect straight to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const generateCaptcha = useCallback(() => {
     let code = "";
@@ -43,7 +53,7 @@ const Login = () => {
     }, 450);
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim()) {
       setAuthAlert({ message: "Please enter your username or work email.", isError: true });
@@ -63,14 +73,27 @@ const Login = () => {
       return;
     }
 
-    // Success State -> Redirect to Dashboard workspace
-    setAuthAlert({ message: "Authentication successful! Redirecting to Workspace...", isError: false });
-    setIsSubmitting(true);
-    localStorage.setItem('nivara_auth', 'true');
+    try {
+      setIsSubmitting(true);
+      setAuthAlert({ message: "Authenticating with NIVARA Security Service...", isError: false });
+      
+      // Call AuthContext login so React state & tokens synchronize globally
+      await login(username.trim(), password);
 
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1200);
+      setAuthAlert({ message: "Authentication successful! Redirecting to Workspace...", isError: false });
+      
+      // Navigate to dashboard
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 400);
+    } catch (err) {
+      setIsSubmitting(false);
+      generateCaptcha();
+      setAuthAlert({ 
+        message: err.response?.data?.message || err.message || "Authentication failed. Please verify your credentials.", 
+        isError: true 
+      });
+    }
   };
 
   const handleForgotPassword = (e) => {
@@ -82,13 +105,6 @@ const Login = () => {
     }
   };
 
-  const handleAutoFillDemo = () => {
-    setUsername('admin@nivara.gov.in');
-    setPassword('nivara2026');
-    setCaptchaInputVal(captchaCode);
-    setAuthAlert({ message: 'Demo credentials auto-filled! Click Sign In to enter.', isError: false });
-  };
-
   return (
     <div className="login-page-root">
       {/* ================= TOP NAVBAR ================= */}
@@ -96,7 +112,7 @@ const Login = () => {
         <div className="nav-left">
           <Link to="/" className="brand-link" title="Return to NIVARA Home">
             <div className="brand-badge">
-              <img src="NIVARA logo.png" alt="NIVARA Logo" className="brand-logo-img" />
+              <img src="/NIVARA logo.png" alt="NIVARA Logo" className="brand-logo-img" onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
             <div className="brand-titles">
               <span className="brand-name">NIVARA</span>
@@ -124,7 +140,7 @@ const Login = () => {
             type="button"
             className="nav-util-btn"
             title="System Notifications"
-            onClick={() => setAuthAlert({ message: "System Notice: All AI Risk Forewarning engines operational (v3.4).", isError: false })}
+            onClick={() => setAuthAlert({ message: "System Notice: All AI Risk Forewarning engines operational.", isError: false })}
           >
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -165,24 +181,6 @@ const Login = () => {
               <p className="card-subtitle">Sign in to manage projects and stream predictive analytics</p>
             </div>
 
-            {/* Quick Demo Credentials Box */}
-            <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <strong style={{ fontSize: '12.5px', color: '#0369a1' }}>Demo Access Credentials</strong>
-                <button
-                  type="button"
-                  onClick={handleAutoFillDemo}
-                  style={{ background: '#0284c7', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer' }}
-                >
-                  Auto-fill Demo &rarr;
-                </button>
-              </div>
-              <p style={{ fontSize: '12px', color: '#334155', margin: 0 }}>
-                <strong>Username:</strong> <code style={{ background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', color: '#0369a1' }}>admin@nivara.gov.in</code><br/>
-                <strong>Password:</strong> <code style={{ background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px', color: '#0369a1' }}>nivara2026</code>
-              </p>
-            </div>
-
             {/* Alert / Toast Message */}
             {authAlert && (
               <div className={`auth-alert show ${authAlert.isError ? 'error' : 'success'}`} role="alert">
@@ -203,7 +201,7 @@ const Login = () => {
                     type="text"
                     id="username"
                     className="form-input"
-                    placeholder="name@agency.org or username"
+                    placeholder="name@agency.gov.in or username"
                     autoComplete="username"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
@@ -328,8 +326,48 @@ const Login = () => {
               </button>
             </form>
 
+            {/* Quick Demo Fill Buttons for Testing */}
+            <div className="pt-3 border-t border-slate-700/50 flex flex-wrap gap-1.5 justify-center text-[11px] text-slate-400">
+              <span className="w-full text-center text-[10px] text-slate-500 uppercase tracking-wider mb-1">Quick Select Demo Role:</span>
+              <button
+                type="button"
+                onClick={() => { setUsername('super.admin@nivara.gov.in'); setPassword('Admin@12345'); }}
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700"
+              >
+                Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => { setUsername('ministry.admin@morth.gov.in'); setPassword('Officer@12345'); }}
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700"
+              >
+                Ministry Officer
+              </button>
+              <button
+                type="button"
+                onClick={() => { setUsername('agency.admin@nhai.gov.in'); setPassword('Officer@12345'); }}
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700"
+              >
+                Agency Officer
+              </button>
+              <button
+                type="button"
+                onClick={() => { setUsername('nodal.officer@nhai.gov.in'); setPassword('Officer@12345'); }}
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700"
+              >
+                Nodal Officer
+              </button>
+              <button
+                type="button"
+                onClick={() => { setUsername('reporting.officer@nhai.gov.in'); setPassword('Officer@12345'); }}
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700"
+              >
+                Reporting Officer
+              </button>
+            </div>
+
             {/* Security Badges Footer */}
-            <div className="card-security-footer">
+            <div className="card-security-footer mt-4">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />

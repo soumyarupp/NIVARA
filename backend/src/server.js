@@ -10,7 +10,7 @@ const startServer = async () => {
     // Start background risk monitoring cron job
     initRiskCronJob();
 
-    app.listen(env.PORT, () => {
+    const server = app.listen(env.PORT, () => {
       console.log(`🏛️ NIVARA Backend Server running on port ${env.PORT} [${env.NODE_ENV}]`);
       console.log(`📡 Health endpoint: http://localhost:${env.PORT}/api/health`);
     });

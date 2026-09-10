@@ -73,16 +73,24 @@ export const canAccessProject = async (user, project) => {
   }
 
   if (user.role === 'NODAL_OFFICER') {
+    const uid = user._id?.toString() || user.id?.toString();
+    const nodalId = project.nodalOfficerId?.toString() || project.nodalOfficer?._id?.toString() || project.nodalOfficer?.toString();
+    const userProjects = (user.projectIds || []).map((p) => p.toString());
     return (
-      project.nodalOfficerId?.toString() === user._id.toString() ||
-      (user.projectIds && user.projectIds.map((p) => p.toString()).includes(project._id.toString()))
+      nodalId === uid ||
+      userProjects.includes(project._id?.toString())
     );
   }
 
   if (user.role === 'REPORTING_OFFICER') {
+    const uid = user._id?.toString() || user.id?.toString();
+    const repId = project.reportingOfficerId?.toString();
+    const officersList = (project.reportingOfficers || []).map(o => (o._id || o).toString());
+    const userProjects = (user.projectIds || []).map((p) => p.toString());
     return (
-      project.reportingOfficerId?.toString() === user._id.toString() ||
-      (user.projectIds && user.projectIds.map((p) => p.toString()).includes(project._id.toString()))
+      repId === uid ||
+      officersList.includes(uid) ||
+      userProjects.includes(project._id?.toString())
     );
   }
 

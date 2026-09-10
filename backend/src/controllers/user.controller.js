@@ -1,7 +1,10 @@
 import { User } from '../models/User.js';
 import { Organization } from '../models/Organization.js';
+import { ImplementationAgency } from '../models/ImplementationAgency.js';
+import { Ministry } from '../models/Ministry.js';
 import {
   inviteNewUser,
+  createUserAccount,
   assignProjectToUser,
   removeProjectFromUser,
   updateUserStatus
@@ -13,6 +16,26 @@ const getClientInfo = (req) => ({
   ipAddress: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress,
   userAgent: req.headers['user-agent'] || null
 });
+
+/**
+ * POST /api/users
+ * Direct user creation by authorized authority in institutional hierarchy
+ */
+export const createUser = async (req, res, next) => {
+  try {
+    const { ipAddress, userAgent } = getClientInfo(req);
+    const result = await createUserAccount({
+      creatorUser: req.user,
+      userData: req.body,
+      ipAddress,
+      userAgent
+    });
+
+    return sendSuccess(res, 'User account created successfully', result, 201);
+  } catch (error) {
+    return sendError(res, error.message, [], 400);
+  }
+};
 
 /**
  * POST /api/users/invite
@@ -35,32 +58,59 @@ export const inviteUser = async (req, res, next) => {
 
 /**
  * GET /api/users
- * Returns users bounded strictly by caller's organization hierarchy
+ * Returns users bounded strictly by caller's institutional hierarchy
  */
 export const listUsers = async (req, res, next) => {
   try {
-    const { role, status, organizationId, search } = req.query;
+    const { role, status, organizationId, ministryId, agencyId, search } = req.query;
     const filter = {};
+    const callerRole = req.user?.role || 'SUPER_ADMIN';
 
-    // Apply organizational boundary
-    if (req.user.role !== 'IPMD_ADMIN') {
-      const accessibleOrgs = await getAccessibleOrganizationIds(req.user);
-      filter.organizationId = { $in: accessibleOrgs };
-    } else if (organizationId) {
-      filter.organizationId = organizationId;
+    // Apply strict institutional jurisdiction
+    if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(callerRole)) {
+      const userMinId = req.user.ministryId || req.user.organizationId;
+      const childAgencies = await ImplementationAgency.find({ ministryId: userMinId }).select('_id');
+      const agencyIds = childAgencies.map(a => a._id);
+      filter.$or = [
+        { ministryId: userMinId },
+        { agencyId: { $in: agencyIds } },
+        { organizationId: userMinId }
+      ];
+    } else if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(callerRole)) {
+      const userAgId = req.user.agencyId || req.user.organizationId;
+      filter.$or = [
+        { agencyId: userAgId },
+        { organizationId: userAgId }
+      ];
+      filter.role = { $in: ['NODAL_OFFICER', 'REPORTING_OFFICER'] };
+    } else if (['NODAL_OFFICER', 'REPORTING_OFFICER'].includes(callerRole)) {
+      filter._id = req.user._id || req.user.id;
+    } else if (['SUPER_ADMIN', 'IPMD_ADMIN'].includes(callerRole)) {
+      if (organizationId) filter.organizationId = organizationId;
+      if (ministryId) filter.ministryId = ministryId;
+      if (agencyId) filter.agencyId = agencyId;
     }
 
     if (role) filter.role = role;
     if (status) filter.status = status;
     if (search) {
-      filter.$or = [
-        { fullName: { $regex: search, $options: 'i' } },
-        { officialEmail: { $regex: search, $options: 'i' } },
-        { employeeId: { $regex: search, $options: 'i' } }
-      ];
+      const searchRegex = { $regex: search, $options: 'i' };
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { name: searchRegex },
+          { fullName: searchRegex },
+          { email: searchRegex },
+          { officialEmail: searchRegex },
+          { employeeId: searchRegex },
+          { designation: searchRegex }
+        ]
+      });
     }
 
     const users = await User.find(filter)
+      .populate('ministryId', 'name code')
+      .populate('agencyId', 'name agencyCode')
       .populate('organizationId', 'name code type')
       .populate('projectIds', 'projectName projectCode')
       .select('-passwordHash -invitationTokenHash -resetPasswordTokenHash')

@@ -11,14 +11,15 @@ const passwordValidation = z
 
 export const loginSchema = z.object({
   body: z.object({
-    officialEmail: z
-      .string({ required_error: 'Official email is required' })
-      .email('Invalid email address')
-      .trim()
-      .toLowerCase(),
+    officialEmail: z.string().trim().toLowerCase().optional(),
+    email: z.string().trim().toLowerCase().optional(),
+    username: z.string().trim().toLowerCase().optional(),
     password: z
       .string({ required_error: 'Password is required' })
       .min(1, 'Password is required')
+  }).refine(data => data.officialEmail || data.email || data.username, {
+    message: 'Official email or username is required',
+    path: ['officialEmail']
   })
 });
 

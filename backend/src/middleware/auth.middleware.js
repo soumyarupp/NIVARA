@@ -34,7 +34,10 @@ export const authenticate = async (req, res, next) => {
     }
 
     // 3. Verify user in database
-    const user = await User.findById(decoded.userId).populate('organizationId', 'name code type');
+    const user = await User.findById(decoded.userId)
+      .populate('organizationId', 'name code type')
+      .populate('agencyId', 'name agencyCode organizationType ministryId')
+      .populate('ministryId', 'name code');
 
     if (!user) {
       return sendError(res, 'User session invalid. Account not found.', [], 401);
@@ -49,6 +52,10 @@ export const authenticate = async (req, res, next) => {
       _id: user._id,
       userId: user._id.toString(),
       role: user.role,
+      agencyId: user.agencyId ? (user.agencyId._id || user.agencyId) : null,
+      agency: user.agencyId,
+      ministryId: user.ministryId ? (user.ministryId._id || user.ministryId) : null,
+      ministry: user.ministryId,
       organizationId: user.organizationId ? (user.organizationId._id || user.organizationId) : null,
       organization: user.organizationId,
       fullName: user.fullName,

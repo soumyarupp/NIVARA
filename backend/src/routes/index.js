@@ -17,6 +17,8 @@ import dashboardRoutes from './dashboard.routes.js';
 import preApprovalRoutes from './preApproval.routes.js';
 import simulatorRoutes from './simulator.routes.js';
 import chatbotRoutes from './chatbot.routes.js';
+import delayRoutes from './delay.routes.js';
+import riskRoutes from './risk.routes.js';
 
 const router = Router();
 
@@ -51,5 +53,8 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/pre-approval', preApprovalRoutes);
 router.use('/simulator', simulatorRoutes);
 router.use('/chatbot', chatbotRoutes);
+router.use('/chat', chatbotRoutes);
+router.use('/delay', delayRoutes);
+router.use('/risk', riskRoutes);
 
 export default router;

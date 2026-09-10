@@ -4,10 +4,109 @@ import { MonthlyReport } from '../models/MonthlyReport.js';
 import { Ministry } from '../models/Ministry.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
+/**
+ * Build project match filter based on user role and jurisdiction
+ */
+function buildProjectMatch(user) {
+  const role = user?.role || 'SUPER_ADMIN';
+  const uid = user?._id || user?.id;
+
+  if (['SUPER_ADMIN', 'IPMD_ADMIN'].includes(role)) {
+    return {};
+  }
+  if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(role)) {
+    const minId = user.ministryId || user.organizationId;
+    return {
+      $or: [{ ministryId: minId }, { lineMinistryId: minId }]
+    };
+  }
+  if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(role)) {
+    const agId = user.agencyId || user.organizationId;
+    return {
+      $or: [
+        { implementationAgencyId: agId },
+        { implementingAgencyId: agId },
+        { createdBy: uid }
+      ]
+    };
+  }
+  if (role === 'NODAL_OFFICER') {
+    return {
+      $or: [
+        { nodalOfficer: uid },
+        { nodalOfficerId: uid },
+        { _id: { $in: user.projectIds || [] } }
+      ]
+    };
+  }
+  if (role === 'REPORTING_OFFICER') {
+    return {
+      $or: [
+        { reportingOfficers: uid },
+        { reportingOfficerId: uid },
+        { _id: { $in: user.projectIds || [] } }
+      ]
+    };
+  }
+  return { _id: null };
+}
+
+/**
+ * Helper to get scoped alert query
+ */
+async function getScopedAlertFilter(user) {
+  const role = user?.role || 'SUPER_ADMIN';
+  const uid = user?._id || user?.id;
+
+  if (role === 'REPORTING_OFFICER') {
+    return null; // No alerts for reporting officers
+  }
+  if (role === 'NODAL_OFFICER') {
+    const userProjects = await Project.find({
+      $or: [
+        { nodalOfficer: uid },
+        { nodalOfficerId: uid },
+        { _id: { $in: user.projectIds || [] } }
+      ]
+    }).select('_id');
+    return { projectId: { $in: userProjects.map(p => p._id) } };
+  }
+  if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(role)) {
+    const agId = user.agencyId || user.organizationId;
+    const agencyProjects = await Project.find({
+      $or: [
+        { implementationAgencyId: agId },
+        { implementingAgencyId: agId },
+        { agencyId: agId }
+      ]
+    }).select('_id');
+    return {
+      projectId: { $in: agencyProjects.map(p => p._id) },
+      severity: { $in: ['CRITICAL', 'HIGH'] }
+    };
+  }
+  if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(role)) {
+    const minId = user.ministryId || user.organizationId;
+    const minProjects = await Project.find({
+      $or: [
+        { ministryId: minId },
+        { lineMinistryId: minId }
+      ]
+    }).select('_id');
+    return { projectId: { $in: minProjects.map(p => p._id) } };
+  }
+  return {};
+}
+
 export async function getDashboardSummary(req, res) {
   try {
-    const [counts, financials, alertCounts] = await Promise.all([
+    const projectMatch = buildProjectMatch(req.user);
+    const hasMatch = Object.keys(projectMatch).length > 0;
+    const projectMatchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
+
+    const [counts, financials] = await Promise.all([
       Project.aggregate([
+        ...projectMatchPipeline,
         {
           $group: {
             _id: null,
@@ -31,6 +130,7 @@ export async function getDashboardSummary(req, res) {
         }
       ]),
       Project.aggregate([
+        ...projectMatchPipeline,
         {
           $group: {
             _id: null,
@@ -42,19 +142,17 @@ export async function getDashboardSummary(req, res) {
             avgFinancialProgress: { $avg: '$financialProgress' }
           }
         }
-      ]),
-      Alert.aggregate([
-        {
-          $group: {
-            _id: '$severity',
-            count: { $sum: 1 }
-          }
-        }
       ])
     ]);
 
-    const activeCriticalAlerts = await Alert.countDocuments({ severity: 'CRITICAL', status: 'ACTIVE' });
-    const activeHighAlerts = await Alert.countDocuments({ severity: 'HIGH', status: 'ACTIVE' });
+    let activeCriticalAlerts = 0;
+    let activeHighAlerts = 0;
+    const alertFilter = await getScopedAlertFilter(req.user);
+
+    if (alertFilter) {
+      activeCriticalAlerts = await Alert.countDocuments({ ...alertFilter, severity: 'CRITICAL', status: 'ACTIVE' });
+      activeHighAlerts = await Alert.countDocuments({ ...alertFilter, severity: 'HIGH', status: 'ACTIVE' });
+    }
 
     const c = counts[0] || {
       totalProjects: 0,
@@ -93,7 +191,12 @@ export async function getDashboardSummary(req, res) {
 
 export async function getRiskDistribution(req, res) {
   try {
+    const projectMatch = buildProjectMatch(req.user);
+    const hasMatch = Object.keys(projectMatch).length > 0;
+    const matchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
+
     const distribution = await Project.aggregate([
+      ...matchPipeline,
       {
         $group: {
           _id: { $ifNull: ['$riskLevel', 'LOW'] },
@@ -124,9 +227,14 @@ export async function getRiskDistribution(req, res) {
 
 export async function getDelayReasons(req, res) {
   try {
+    const projectMatch = buildProjectMatch(req.user);
+    const scopedProjects = await Project.find(projectMatch).select('_id');
+    const projectIds = scopedProjects.map(p => p._id);
+
     const reasons = await MonthlyReport.aggregate([
       {
         $match: {
+          projectId: { $in: projectIds },
           autoDetectedDelayReason: { $nin: ['NONE', null] }
         }
       },
@@ -148,7 +256,12 @@ export async function getDelayReasons(req, res) {
 
 export async function getStateSummary(req, res) {
   try {
+    const projectMatch = buildProjectMatch(req.user);
+    const hasMatch = Object.keys(projectMatch).length > 0;
+    const matchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
+
     const stateSummary = await Project.aggregate([
+      ...matchPipeline,
       {
         $group: {
           _id: { $ifNull: ['$state', 'National / Multi-State'] },
@@ -172,7 +285,12 @@ export async function getStateSummary(req, res) {
 
 export async function getSectorSummary(req, res) {
   try {
+    const projectMatch = buildProjectMatch(req.user);
+    const hasMatch = Object.keys(projectMatch).length > 0;
+    const matchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
+
     const sectorSummary = await Project.aggregate([
+      ...matchPipeline,
       {
         $group: {
           _id: '$sector',
@@ -196,7 +314,12 @@ export async function getSectorSummary(req, res) {
 
 export async function getMinistrySummary(req, res) {
   try {
+    const projectMatch = buildProjectMatch(req.user);
+    const hasMatch = Object.keys(projectMatch).length > 0;
+    const matchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
+
     const ministrySummary = await Project.aggregate([
+      ...matchPipeline,
       {
         $group: {
           _id: '$ministryId',
@@ -241,5 +364,71 @@ export async function getMinistrySummary(req, res) {
     return sendSuccess(res, 'Ministry-wise summary retrieved.', ministrySummary);
   } catch (err) {
     return sendError(res, err.message || 'Failed to fetch ministry summary.', [], 500);
+  }
+}
+
+export async function getDashboardOverview(req, res) {
+  try {
+    const projectMatch = buildProjectMatch(req.user);
+    const hasMatch = Object.keys(projectMatch).length > 0;
+    const projectMatchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
+
+    const [counts, financials] = await Promise.all([
+      Project.aggregate([
+        ...projectMatchPipeline,
+        {
+          $group: {
+            _id: null,
+            totalProjects: { $sum: 1 },
+            ongoingProjects: {
+              $sum: { $cond: [{ $in: ['$projectStatus', ['ONGOING', 'IN_PROGRESS', 'APPROVED']] }, 1, 0] }
+            },
+            completedProjects: {
+              $sum: { $cond: [{ $eq: ['$projectStatus', 'COMPLETED'] }, 1, 0] }
+            },
+            highRiskProjects: {
+              $sum: { $cond: [{ $in: ['$riskLevel', ['HIGH', 'CRITICAL']] }, 1, 0] }
+            }
+          }
+        }
+      ]),
+      Project.aggregate([
+        ...projectMatchPipeline,
+        {
+          $group: {
+            _id: null,
+            totalCost: { $sum: '$originalProjectCost' },
+            totalExpenditure: {
+              $sum: { $ifNull: ['$expenditure', '$totalActualExpenditure', 0] }
+            },
+            avgPhysicalProgress: { $avg: '$physicalProgress' },
+            avgFinancialProgress: { $avg: '$financialProgress' }
+          }
+        }
+      ])
+    ]);
+
+    let activeCriticalAlerts = 0;
+    const alertFilter = await getScopedAlertFilter(req.user);
+    if (alertFilter) {
+      activeCriticalAlerts = await Alert.countDocuments({ ...alertFilter, severity: 'CRITICAL', status: 'ACTIVE' });
+    }
+
+    const c = counts[0] || { totalProjects: 0, ongoingProjects: 0, completedProjects: 0, highRiskProjects: 0 };
+    const f = financials[0] || { totalCost: 0, totalExpenditure: 0, avgPhysicalProgress: 0, avgFinancialProgress: 0 };
+
+    return sendSuccess(res, 'Dashboard overview retrieved.', {
+      totalProjects: c.totalProjects,
+      ongoingProjects: c.ongoingProjects,
+      completedProjects: c.completedProjects,
+      highRiskProjects: c.highRiskProjects,
+      criticalAlerts: activeCriticalAlerts,
+      totalCost: f.totalCost,
+      totalExpenditure: f.totalExpenditure,
+      avgPhysicalProgress: Math.round((f.avgPhysicalProgress || 0) * 10) / 10,
+      avgFinancialProgress: Math.round((f.avgFinancialProgress || 0) * 10) / 10
+    });
+  } catch (err) {
+    return sendError(res, err.message || 'Failed to fetch dashboard overview.', [], 500);
   }
 }

@@ -5,7 +5,16 @@ export async function getAgencies(req, res) {
   try {
     const { ministryId } = req.query;
     const query = {};
-    if (ministryId) query.ministryId = ministryId;
+    
+    if (ministryId) {
+      query.ministryId = ministryId;
+    } else if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(req.user?.role)) {
+      const userMin = req.user.ministryId || req.user.organizationId;
+      if (userMin) query.ministryId = userMin;
+    } else if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(req.user?.role)) {
+      const userAg = req.user.agencyId || req.user.organizationId;
+      if (userAg) query._id = userAg;
+    }
 
     const agencies = await ImplementationAgency.find(query).populate('ministryId', 'name code').sort({ name: 1 });
     return sendSuccess(res, 'Implementation agencies retrieved.', agencies);
@@ -16,7 +25,14 @@ export async function getAgencies(req, res) {
 
 export async function createAgency(req, res) {
   try {
-    const agency = await ImplementationAgency.create(req.body);
+    const payload = { ...req.body };
+    if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(req.user?.role)) {
+      const userMin = req.user.ministryId || req.user.organizationId;
+      if (userMin) {
+        payload.ministryId = userMin;
+      }
+    }
+    const agency = await ImplementationAgency.create(payload);
     return sendSuccess(res, 'Implementation agency created successfully.', agency, 201);
   } catch (err) {
     return sendError(res, err.message || 'Failed to create agency.', [], 400);

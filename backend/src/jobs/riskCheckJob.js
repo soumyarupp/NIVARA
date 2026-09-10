@@ -10,10 +10,8 @@ import { MonthlyReport } from '../models/MonthlyReport.js';
 import { Clearance } from '../models/Clearance.js';
 import { LandDetail } from '../models/LandDetail.js';
 import { Alert } from '../models/Alert.js';
-import { Notification } from '../models/Notification.js';
-import { User } from '../models/User.js';
 import { calculateProjectRisk } from '../services/riskEngine.js';
-import { sendAlertNotificationEmail } from '../services/email.service.js';
+import { dispatchProjectAlert } from '../services/alertDispatch.service.js';
 
 /**
  * Runs the risk inspection across all active projects.
@@ -63,40 +61,15 @@ export async function runAutomatedRiskScan() {
         });
 
         if (!existingDelayAlert) {
-          const delayAlert = await Alert.create({
-            projectId: project._id,
+          await dispatchProjectAlert({
+            project,
             alertType: 'REPORTING_DELAY',
             severity: 'HIGH',
             title: '90-Day Inactive Reporting Delay',
             message: `Monthly project update has not been received for ${daysSinceLastReport} days. Regular monitoring review recommended.`,
-            riskScore: 75,
-            assignedTo: project.nodalOfficer ? project.nodalOfficer._id : null
+            riskScore: 75
           });
           alertsCreated++;
-
-          if (project.nodalOfficer) {
-            await Notification.create({
-              userId: project.nodalOfficer._id,
-              projectId: project._id,
-              alertId: delayAlert._id,
-              title: '90-Day Inactive Reporting Delay',
-              message: `Project ${project.projectName} has not submitted a monthly progress report in ${daysSinceLastReport} days.`,
-              type: 'ALERT',
-              severity: 'HIGH'
-            });
-
-            if (project.nodalOfficer.officialEmail || project.nodalOfficer.email) {
-              await sendAlertNotificationEmail({
-                to: project.nodalOfficer.officialEmail || project.nodalOfficer.email,
-                recipientName: project.nodalOfficer.fullName || project.nodalOfficer.name,
-                projectTitle: project.projectName,
-                alertTitle: '90-Day Inactive Reporting Delay',
-                alertMessage: `Monthly project update has not been received for ${daysSinceLastReport} days. Please coordinate with reporting officers.`,
-                severity: 'HIGH',
-                riskScore: 75
-              });
-            }
-          }
         }
       }
 
@@ -139,40 +112,15 @@ export async function runAutomatedRiskScan() {
             .map((f) => f.description)
             .join(' ');
 
-          const riskAlert = await Alert.create({
-            projectId: project._id,
+          await dispatchProjectAlert({
+            project,
             alertType,
             severity: riskResult.riskLevel,
             title: `${riskResult.riskLevel} Project Risk Detected (${riskResult.riskScore}/100)`,
             message: majorFactors || `Composite risk score has escalated to ${riskResult.riskScore}/100.`,
-            riskScore: riskResult.riskScore,
-            assignedTo: project.nodalOfficer ? project.nodalOfficer._id : null
+            riskScore: riskResult.riskScore
           });
           alertsCreated++;
-
-          if (project.nodalOfficer) {
-            await Notification.create({
-              userId: project.nodalOfficer._id,
-              projectId: project._id,
-              alertId: riskAlert._id,
-              title: `${riskResult.riskLevel} Risk Alert: ${project.projectName}`,
-              message: majorFactors || `Risk score evaluated at ${riskResult.riskScore}/100.`,
-              type: 'ALERT',
-              severity: riskResult.riskLevel
-            });
-
-            if (project.nodalOfficer.officialEmail || project.nodalOfficer.email) {
-              await sendAlertNotificationEmail({
-                to: project.nodalOfficer.officialEmail || project.nodalOfficer.email,
-                recipientName: project.nodalOfficer.fullName || project.nodalOfficer.name,
-                projectTitle: project.projectName,
-                alertTitle: `${riskResult.riskLevel} Risk Alert`,
-                alertMessage: majorFactors || `Risk score evaluated at ${riskResult.riskScore}/100. Review recommended.`,
-                severity: riskResult.riskLevel,
-                riskScore: riskResult.riskScore
-              });
-            }
-          }
         }
       }
     }

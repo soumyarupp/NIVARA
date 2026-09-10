@@ -1,67 +1,254 @@
 import { User } from '../models/User.js';
 import { Organization } from '../models/Organization.js';
+import { ImplementationAgency } from '../models/ImplementationAgency.js';
+import { Ministry } from '../models/Ministry.js';
 import { Project } from '../models/Project.js';
 import { createAndSendInvitation } from './invitation.service.js';
 import { logAuditEvent } from './audit.service.js';
 import { getAccessibleOrganizationIds } from './organization.service.js';
+import { hashPassword } from '../utils/password.js';
 
 /**
- * Validate permission matrix for creating a user with a given role and organization.
+ * Validate institutional permission matrix for creating/inviting a user with a given role.
+ * Rules:
+ * 1. Ministry Officer / Admin -> Can ONLY create Implementation Agency accounts.
+ * 2. Implementation Agency -> Can ONLY create Nodal Officers and Reporting Officers.
+ * 3. Super Admin / IPMD Admin -> Can create all roles.
+ * 4. Nodal / Reporting Officers -> Cannot create any accounts.
  */
-export const validateUserCreationAuthority = async (creatorUser, targetRole, targetOrgId) => {
+export const validateUserCreationAuthority = async (creatorUser, targetRole, targetOrgId, targetAgencyId) => {
   const creatorRole = creatorUser.role;
 
   // Rule 1: Nodal and Reporting Officers cannot create any accounts
-  if (creatorRole === 'NODAL_OFFICER' || creatorRole === 'REPORTING_OFFICER') {
+  if (['NODAL_OFFICER', 'REPORTING_OFFICER'].includes(creatorRole)) {
     throw new Error('Officers are not authorized to create or invite users.');
   }
 
-  // Rule 2: IPMD_ADMIN can create any role
-  if (creatorRole === 'IPMD_ADMIN') {
-    if (targetRole !== 'IPMD_ADMIN' && !targetOrgId) {
-      throw new Error(`Organization is required when creating a ${targetRole}`);
+  // Rule 2: Super Admin / IPMD Admin can create any role
+  if (['SUPER_ADMIN', 'IPMD_ADMIN'].includes(creatorRole)) {
+    return;
+  }
+
+  // Rule 3: Ministry Officer / Ministry Admin permissions
+  if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(creatorRole)) {
+    if (!['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(targetRole)) {
+      throw new Error('Ministry Officers are only authorized to create Implementation Agency accounts.');
     }
     return;
   }
 
-  // Rule 3: MINISTRY_ADMIN permissions
-  if (creatorRole === 'MINISTRY_ADMIN') {
-    if (targetRole === 'IPMD_ADMIN' || targetRole === 'MINISTRY_ADMIN') {
-      throw new Error('Ministry Admins cannot create IPMD Admins or other Ministry Admins.');
+  // Rule 4: Implementation Agency / Agency Admin permissions
+  // Agency ONLY controls (creates) Nodal Officers and Reporting Officers
+  if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(creatorRole)) {
+    if (!['NODAL_OFFICER', 'REPORTING_OFFICER'].includes(targetRole)) {
+      throw new Error('Implementation Agencies are only authorized to create Nodal Officers and Reporting Officers.');
     }
-
-    if (!targetOrgId) {
-      throw new Error('Target organization ID is required.');
-    }
-
-    // Must be a child agency of the creator's ministry
-    const targetOrg = await Organization.findById(targetOrgId);
-    if (!targetOrg || targetOrg.type !== 'IMPLEMENTING_AGENCY') {
-      throw new Error('Ministry Admins can only assign users to Implementing Agencies.');
-    }
-
-    if (targetOrg.parentOrganizationId?.toString() !== creatorUser.organizationId?.toString()) {
-      throw new Error('You do not have jurisdiction over this Implementing Agency.');
-    }
-
-    return;
-  }
-
-  // Rule 4: AGENCY_ADMIN permissions
-  if (creatorRole === 'AGENCY_ADMIN') {
-    if (targetRole !== 'NODAL_OFFICER' && targetRole !== 'REPORTING_OFFICER') {
-      throw new Error('Agency Admins can only create Nodal Officers and Reporting Officers.');
-    }
-
-    // Must be for their own agency
-    if (targetOrgId && targetOrgId.toString() !== creatorUser.organizationId?.toString()) {
-      throw new Error('Agency Admins can only create users for their own Implementing Agency.');
-    }
-
     return;
   }
 
   throw new Error('Unauthorized account creation request.');
+};
+
+/**
+ * Direct Account Creation Service (with password)
+ */
+export const createUserAccount = async ({
+  creatorUser,
+  userData,
+  ipAddress,
+  userAgent
+}) => {
+  const normalizedEmail = (userData.officialEmail || userData.email || '').trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error('Official email address is required.');
+  }
+
+  // 1. Check duplicate email
+  const existingUser = await User.findOne({
+    $or: [{ officialEmail: normalizedEmail }, { email: normalizedEmail }]
+  });
+  if (existingUser) {
+    throw new Error(`A user with email ${normalizedEmail} already exists.`);
+  }
+
+  const targetRole = userData.role;
+  let resolvedMinistryId = userData.ministryId || userData.ministry || null;
+  let resolvedAgencyId = userData.agencyId || userData.agency || null;
+  let resolvedOrgId = userData.organizationId || null;
+
+  // 2. Enforce Creator Role Jurisdiction & Resolve Agency/Ministry
+  if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(creatorUser.role)) {
+    if (!['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(targetRole)) {
+      throw new Error('Ministry Officers are only authorized to create Implementation Agency accounts.');
+    }
+    resolvedMinistryId = creatorUser.ministryId || creatorUser.organizationId;
+    if (resolvedAgencyId) {
+      const ag = await ImplementationAgency.findById(resolvedAgencyId);
+      if (ag && ag.ministryId && creatorUser.ministryId && ag.ministryId.toString() !== creatorUser.ministryId.toString()) {
+        throw new Error('You do not have jurisdiction over this Implementation Agency.');
+      }
+    }
+  } else if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(creatorUser.role)) {
+    if (!['NODAL_OFFICER', 'REPORTING_OFFICER'].includes(targetRole)) {
+      throw new Error('Implementation Agencies can only create Nodal Officers and Reporting Officers.');
+    }
+    resolvedAgencyId = creatorUser.agencyId || creatorUser.organizationId || userData.agencyId || userData.agency;
+    resolvedMinistryId = creatorUser.ministryId || userData.ministryId || userData.ministry || null;
+    if (resolvedAgencyId && !resolvedMinistryId) {
+      const ag = await ImplementationAgency.findById(resolvedAgencyId);
+      if (ag && ag.ministryId) {
+        resolvedMinistryId = ag.ministryId;
+      }
+    }
+  } else if (['NODAL_OFFICER', 'REPORTING_OFFICER'].includes(creatorUser.role)) {
+    throw new Error('Officers are not authorized to create accounts.');
+  }
+
+  await validateUserCreationAuthority(creatorUser, targetRole, resolvedOrgId, resolvedAgencyId);
+
+  const fullName = (userData.fullName || userData.name || '').trim();
+  if (!fullName) {
+    throw new Error('Official Full Name is required.');
+  }
+
+  if (!userData.password || typeof userData.password !== 'string' || userData.password.trim() === '') {
+    throw new Error('Password is required.');
+  }
+  if (userData.password.trim().length < 6) {
+    throw new Error('Password must be at least 6 characters long.');
+  }
+
+  if (!targetRole) {
+    throw new Error('System Role is required.');
+  }
+
+  const phone = (userData.mobileNumber || userData.phone || '').trim();
+  if (!phone) {
+    throw new Error('Contact Phone number is required.');
+  }
+
+  // 3. Hash secret password
+  const rawPassword = userData.password.trim();
+  const passwordHash = await hashPassword(rawPassword);
+
+  // Resolve agency info for smart codes
+  let agencyCode = 'AGY';
+  if (resolvedAgencyId) {
+    const ag = await ImplementationAgency.findById(resolvedAgencyId);
+    if (ag && (ag.agencyCode || ag.code)) {
+      agencyCode = ag.agencyCode || ag.code;
+    }
+  }
+
+  // Automatic smart defaults for designation, department, and employeeId based on role & agency
+  let defaultDesignation = 'Government Infrastructure Official';
+  let defaultDepartment = 'Infrastructure Project Directorate';
+  let defaultEmployeeId = `${agencyCode}-${Math.floor(100 + Math.random() * 900)}`;
+
+  if (targetRole === 'NODAL_OFFICER') {
+    defaultDesignation = `Project Director / Nodal Officer (${agencyCode})`;
+    defaultDepartment = 'Project Monitoring & AI Vigilance Directorate';
+    defaultEmployeeId = `${agencyCode}-NOD-${Math.floor(100 + Math.random() * 900)}`;
+  } else if (targetRole === 'REPORTING_OFFICER') {
+    defaultDesignation = `Resident Engineer / Field Reporting Officer`;
+    defaultDepartment = 'Field Supervision & Ground Progress Unit';
+    defaultEmployeeId = `${agencyCode}-REP-${Math.floor(100 + Math.random() * 900)}`;
+  } else if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(targetRole)) {
+    defaultDesignation = `Chief General Manager / Agency Head (${agencyCode})`;
+    defaultDepartment = 'Project Implementation & Execution Wing';
+    defaultEmployeeId = `${agencyCode}-CGM-${Math.floor(100 + Math.random() * 900)}`;
+  } else if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(targetRole)) {
+    defaultDesignation = 'Joint Secretary / Ministry Nodal Officer';
+    defaultDepartment = 'Infrastructure Planning & Project Directorate';
+    defaultEmployeeId = `MIN-${Math.floor(100 + Math.random() * 900)}`;
+  }
+
+  const finalDesignation = (userData.designation || '').trim() || defaultDesignation;
+  const finalDepartment = (userData.department || '').trim() || defaultDepartment;
+  const finalEmployeeId = (userData.employeeId || '').trim() || defaultEmployeeId;
+
+  if (!finalDesignation) {
+    throw new Error('Designation is required.');
+  }
+  if (!finalDepartment) {
+    throw new Error('Department is required.');
+  }
+  if (!finalEmployeeId) {
+    throw new Error('Employee ID is required.');
+  }
+
+  // 4. Create User Record in ACTIVE status
+  const newUser = new User({
+    name: fullName,
+    fullName: fullName,
+    email: normalizedEmail,
+    officialEmail: normalizedEmail,
+    mobileNumber: phone,
+    phone: phone,
+    designation: finalDesignation,
+    employeeId: finalEmployeeId,
+    department: finalDepartment,
+    ministryId: resolvedMinistryId,
+    agencyId: resolvedAgencyId,
+    organizationId: resolvedOrgId || resolvedAgencyId || resolvedMinistryId,
+    role: targetRole,
+    projectIds: userData.projectIds || [],
+    password: passwordHash,
+    passwordHash: passwordHash,
+    status: 'ACTIVE',
+    isActive: true,
+    emailVerified: true,
+    createdBy: creatorUser._id || creatorUser.id
+  });
+
+  await newUser.save();
+
+  // 5. Update project references if projectIds provided
+  if (newUser.projectIds && newUser.projectIds.length > 0) {
+    if (newUser.role === 'REPORTING_OFFICER') {
+      await Project.updateMany(
+        { _id: { $in: newUser.projectIds } },
+        { reportingOfficerId: newUser._id }
+      );
+    } else if (newUser.role === 'NODAL_OFFICER') {
+      await Project.updateMany(
+        { _id: { $in: newUser.projectIds } },
+        { nodalOfficerId: newUser._id, nodalOfficer: newUser._id }
+      );
+    }
+  }
+
+  await logAuditEvent({
+    userId: creatorUser._id || creatorUser.id,
+    action: 'USER_CREATED',
+    targetUserId: newUser._id,
+    resourceType: 'User',
+    resourceId: newUser._id.toString(),
+    ipAddress,
+    userAgent,
+    metadata: {
+      role: newUser.role,
+      officialEmail: newUser.officialEmail,
+      agencyId: resolvedAgencyId,
+      ministryId: resolvedMinistryId
+    }
+  });
+
+  return {
+    id: newUser._id,
+    _id: newUser._id,
+    name: newUser.name,
+    fullName: newUser.fullName,
+    email: newUser.email,
+    officialEmail: newUser.officialEmail,
+    role: newUser.role,
+    designation: newUser.designation,
+    ministryId: newUser.ministryId,
+    agencyId: newUser.agencyId,
+    status: newUser.status,
+    isActive: newUser.isActive,
+    projectIds: newUser.projectIds
+  };
 };
 
 /**
@@ -348,33 +535,61 @@ export const updateUserStatus = async ({
     throw new Error('Target user not found.');
   }
 
-  // Prevent modifying higher or equal authority unless IPMD_ADMIN
-  if (actorUser.role === 'MINISTRY_ADMIN' && ['IPMD_ADMIN', 'MINISTRY_ADMIN'].includes(targetUser.role)) {
-    throw new Error('Ministry Admins cannot change status of Ministry or IPMD Admins.');
-  }
+  const actorRole = actorUser.role;
 
-  if (actorUser.role === 'AGENCY_ADMIN' && ['IPMD_ADMIN', 'MINISTRY_ADMIN', 'AGENCY_ADMIN'].includes(targetUser.role)) {
-    throw new Error('Agency Admins can only change status of Nodal and Reporting Officers.');
+  // 1. Authority Validation
+  if (['SUPER_ADMIN', 'IPMD_ADMIN'].includes(actorRole)) {
+    // Super Admin has full jurisdiction
+  } else if (['MINISTRY_OFFICER', 'MINISTRY_ADMIN'].includes(actorRole)) {
+    // Ministry can only activate/deactivate Implementation Agency accounts under their ministry
+    if (!['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(targetUser.role)) {
+      throw new Error('Ministry Officers are only authorized to activate or deactivate Implementation Agency accounts.');
+    }
+    const actorMinId = actorUser.ministryId || actorUser.organizationId;
+    const targetMinId = targetUser.ministryId || targetUser.organizationId;
+    if (actorMinId && targetMinId && actorMinId.toString() !== targetMinId.toString()) {
+      throw new Error('Cannot modify status of an agency outside your Ministry jurisdiction.');
+    }
+  } else if (['IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'].includes(actorRole)) {
+    // Agency ONLY controls (activates & deactivates) Nodal Officers and Reporting Officers under their agency
+    if (!['NODAL_OFFICER', 'REPORTING_OFFICER'].includes(targetUser.role)) {
+      throw new Error('Implementation Agencies can only activate or deactivate Nodal Officers and Reporting Officers.');
+    }
+    const actorAgId = actorUser.agencyId || actorUser.organizationId;
+    const targetAgId = targetUser.agencyId || targetUser.organizationId;
+    if (actorAgId && targetAgId && actorAgId.toString() !== targetAgId.toString()) {
+      throw new Error('Cannot modify status of an officer outside your Agency.');
+    }
+  } else {
+    throw new Error('You do not have permission to alter user status.');
   }
 
   const oldStatus = targetUser.status;
-  targetUser.status = status;
+  const newStatus = typeof status === 'boolean' 
+    ? (status ? 'ACTIVE' : 'DEACTIVATED') 
+    : (['ACTIVE', 'INVITED', 'SUSPENDED', 'DEACTIVATED'].includes(status) ? status : (status ? 'ACTIVE' : 'DEACTIVATED'));
+
+  targetUser.status = newStatus;
+  targetUser.isActive = newStatus === 'ACTIVE';
   await targetUser.save();
 
   await logAuditEvent({
-    userId: actorUser._id,
-    action: `USER_STATUS_UPDATED_${status}`,
+    userId: actorUser._id || actorUser.id,
+    action: `USER_STATUS_UPDATED_${newStatus}`,
     targetUserId: targetUser._id,
     resourceType: 'User',
     resourceId: targetUser._id.toString(),
     ipAddress,
     userAgent,
-    metadata: { oldStatus, newStatus: status }
+    metadata: { oldStatus, newStatus }
   });
 
   return {
     id: targetUser._id,
-    fullName: targetUser.fullName,
-    status: targetUser.status
+    _id: targetUser._id,
+    fullName: targetUser.fullName || targetUser.name,
+    name: targetUser.name || targetUser.fullName,
+    status: targetUser.status,
+    isActive: targetUser.isActive
   };
 };

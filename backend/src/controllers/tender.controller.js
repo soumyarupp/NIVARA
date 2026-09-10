@@ -1,9 +1,15 @@
+import mongoose from 'mongoose';
 import { Tender } from '../models/Tender.js';
+import { Project } from '../models/Project.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 export async function addTender(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+    }
     const tender = await Tender.create({ ...req.body, projectId });
     return sendSuccess(res, 'Tender added successfully.', tender, 201);
   } catch (err) {
@@ -13,7 +19,12 @@ export async function addTender(req, res) {
 
 export async function getTendersByProject(req, res) {
   try {
-    const { projectId } = req.params;
+    let { projectId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      const proj = await Project.findOne({ $or: [{ projectCode: projectId }, { projectCode: { $regex: new RegExp(`^${projectId}$`, 'i') } }] }).select('_id');
+      if (proj) projectId = proj._id;
+      else return sendSuccess(res, 'Tenders retrieved.', []);
+    }
     const tenders = await Tender.find({ projectId }).sort({ createdAt: -1 });
     return sendSuccess(res, 'Tenders retrieved.', tenders);
   } catch (err) {

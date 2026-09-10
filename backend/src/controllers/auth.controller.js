@@ -31,7 +31,8 @@ const getCookieOptions = () => {
  */
 export const login = async (req, res, next) => {
   try {
-    const { officialEmail, password } = req.body;
+    const officialEmail = req.body.officialEmail || req.body.email || req.body.username;
+    const { password } = req.body;
     const { ipAddress, userAgent } = getClientInfo(req);
 
     const result = await loginUser({ officialEmail, password, ipAddress, userAgent });
@@ -44,7 +45,8 @@ export const login = async (req, res, next) => {
       'Login successful',
       {
         user: result.user,
-        accessToken: result.accessToken
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
       },
       200
     );
@@ -245,7 +247,8 @@ export const refresh = async (req, res, next) => {
       res,
       'Token refreshed successfully',
       {
-        accessToken: result.accessToken
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
       },
       200
     );

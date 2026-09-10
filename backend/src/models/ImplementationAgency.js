@@ -17,7 +17,7 @@ const implementationAgencySchema = new mongoose.Schema(
     },
     organizationType: {
       type: String,
-      enum: ['PSU', 'STATE_DEPT', 'CENTRAL_AGENCY', 'SPV', 'JOINT_VENTURE', 'OTHER'],
+      enum: ['PSU', 'STATE_DEPT', 'CENTRAL_AGENCY', 'STATUTORY_BODY', 'AUTONOMOUS_BODY', 'SPV', 'JOINT_VENTURE', 'OTHER'],
       default: 'PSU'
     },
     ministryId: {

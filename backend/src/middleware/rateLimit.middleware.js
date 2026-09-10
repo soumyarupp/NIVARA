@@ -33,20 +33,20 @@ const generalLimiterInstance = rateLimit({
 });
 
 /**
- * Strict Rate Limiter for Authentication Endpoints
+ * Strict Rate Limiter for Authentication Endpoints (disabled or relaxed in development)
  */
 export const authRateLimiter = (req, res, next) => {
-  if (process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV !== 'production' || env.NODE_ENV !== 'production') {
     return next();
   }
   return authLimiterInstance(req, res, next);
 };
 
 /**
- * General API Rate Limiter
+ * General API Rate Limiter (disabled or relaxed in development)
  */
 export const generalApiLimiter = (req, res, next) => {
-  if (process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV !== 'production' || env.NODE_ENV !== 'production') {
     return next();
   }
   return generalLimiterInstance(req, res, next);

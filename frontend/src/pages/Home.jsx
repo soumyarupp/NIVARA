@@ -183,19 +183,19 @@ const Home = () => {
               </Link>
             </div>
 
-            {/* Card 3: Risk Intelligence */}
+            {/* Card 3: What-If Delay Simulator */}
             <div className="ai-feature-card">
               <div className="ai-feature-top">
                 <div className="ai-feature-icon" style={{ backgroundColor: '#f3e8ff', color: '#7c3aed' }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12L2.5 7.5"/></svg>
                 </div>
-                <h3 className="ai-feature-title">3. Risk Intelligence</h3>
+                <h3 className="ai-feature-title">3. What-If Delay Simulator</h3>
                 <p className="ai-feature-desc">
-                  Explore NIVARA's 6 AI Machine Learning engines: Early Warning Alerts, AI Chatbot, NLP Delay Classifier, Fund vs Physical Mismatch, Pre-Approval Simulator, and What-If Delay Impact.
+                  Simulate contractor bottlenecks, monsoon delays, and statutory clearance lag to forecast timeline slippage and cost escalation impact.
                 </p>
               </div>
-              <Link to={isAuthenticated ? "/risk-intelligence" : "/login"} className="btn-feature-action" style={{ textDecoration: 'none' }}>
-                <span>Explore Risk Intelligence</span>
+              <Link to={isAuthenticated ? "/what-if-simulator" : "/login"} className="btn-feature-action" style={{ textDecoration: 'none' }}>
+                <span>Launch Simulator</span>
                 <span>&rarr;</span>
               </Link>
             </div>

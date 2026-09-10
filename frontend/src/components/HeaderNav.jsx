@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const HeaderNav = ({ activeKey }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated: authFromContext, user, logout } = useAuth();
   const [fontScale, setFontScale] = useState(1);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
@@ -11,10 +13,9 @@ const HeaderNav = ({ activeKey }) => {
 
   const currentPath = activeKey || location.pathname;
 
-  // Check if user is authenticated or on an authenticated route
-  const authStored = localStorage.getItem('nivara_auth') === 'true';
-  const isAuthRoute = ['/projects', '/dashboard', '/risk-intelligence', '/reports', '/add-project'].includes(currentPath);
-  const isAuthenticated = authStored || isAuthRoute;
+  // Check if user is authenticated
+  const authStored = localStorage.getItem('nivara_auth') === 'true' || !!localStorage.getItem('nivara_token');
+  const isAuthenticated = authFromContext || authStored;
 
   const handleFontIncrease = () => {
     const newScale = Math.min(1.3, fontScale + 0.1);
@@ -28,10 +29,18 @@ const HeaderNav = ({ activeKey }) => {
     document.documentElement.style.fontSize = `${newScale * 100}%`;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('nivara_auth');
-    navigate('/');
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      if (logout) await logout();
+    } catch (e) {
+      console.warn('Logout fallback:', e);
+    } finally {
+      localStorage.removeItem('nivara_auth');
+      localStorage.removeItem('nivara_token');
+      localStorage.removeItem('nivara_user');
+      navigate('/');
+      window.location.reload();
+    }
   };
 
   const handleContactSubmit = (e) => {
@@ -59,9 +68,9 @@ const HeaderNav = ({ activeKey }) => {
         {/* Authenticated Workspace Links (Desktop) */}
         {isAuthenticated && (
           <nav className="header-nav header-nav-desktop">
-            <Link to="/projects" className={`nav-link ${currentPath === '/projects' ? 'active' : ''}`}>Projects</Link>
             <Link to="/dashboard" className={`nav-link ${currentPath === '/dashboard' ? 'active' : ''}`}>Dashboard</Link>
-            <Link to="/risk-intelligence" className={`nav-link ${currentPath === '/risk-intelligence' ? 'active' : ''}`}>Risk Intelligence</Link>
+            <Link to="/projects" className={`nav-link ${currentPath === '/projects' ? 'active' : ''}`}>Projects</Link>
+            <Link to="/alerts" className={`nav-link ${currentPath === '/alerts' ? 'active' : ''}`}>Early Warnings</Link>
             <Link to="/reports" className={`nav-link ${currentPath === '/reports' ? 'active' : ''}`}>Reports</Link>
           </nav>
         )}
@@ -84,9 +93,14 @@ const HeaderNav = ({ activeKey }) => {
           </button>
 
           {isAuthenticated ? (
-            <>
-              <Link to="/add-project" className="btn btn-add" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-                + Add Project / Update
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <Link 
+                to="/dashboard" 
+                className="btn btn-add" 
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <span>Dashboard</span>
+                <span>&rarr;</span>
               </Link>
               <button
                 type="button"
@@ -96,11 +110,32 @@ const HeaderNav = ({ activeKey }) => {
               >
                 Logout
               </button>
-            </>
+            </div>
           ) : (
-            <Link to="/login" className="btn btn-add" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-              Sign In to Workspace &rarr;
-            </Link>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <Link 
+                to="/dashboard" 
+                className="btn btn-reports" 
+                style={{ 
+                  textDecoration: 'none', 
+                  display: 'inline-flex', 
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  borderColor: '#cbd5e1',
+                  color: '#0284c7',
+                  fontWeight: '700'
+                }}
+              >
+                Dashboard
+              </Link>
+              <Link 
+                to="/login" 
+                className="btn btn-add" 
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+              >
+                Login &rarr;
+              </Link>
+            </div>
           )}
 
           <div className="font-controls">
@@ -140,13 +175,6 @@ const HeaderNav = ({ activeKey }) => {
             {isAuthenticated ? (
               <>
                 <Link 
-                  to="/projects" 
-                  className={`mobile-drawer-item ${currentPath === '/projects' ? 'active' : ''}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Projects Registry
-                </Link>
-                <Link 
                   to="/dashboard" 
                   className={`mobile-drawer-item ${currentPath === '/dashboard' ? 'active' : ''}`}
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -154,11 +182,18 @@ const HeaderNav = ({ activeKey }) => {
                   Operational Dashboard
                 </Link>
                 <Link 
-                  to="/risk-intelligence" 
-                  className={`mobile-drawer-item ${currentPath === '/risk-intelligence' ? 'active' : ''}`}
+                  to="/projects" 
+                  className={`mobile-drawer-item ${currentPath === '/projects' ? 'active' : ''}`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Risk Intelligence (6 AI)
+                  Projects Registry
+                </Link>
+                <Link 
+                  to="/alerts" 
+                  className={`mobile-drawer-item ${currentPath === '/alerts' ? 'active' : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Early Warnings &amp; Alerts
                 </Link>
                 <Link 
                   to="/reports" 
@@ -167,22 +202,24 @@ const HeaderNav = ({ activeKey }) => {
                 >
                   Predictive Reports
                 </Link>
-                <Link 
-                  to="/add-project" 
-                  className={`mobile-drawer-item ${currentPath === '/add-project' ? 'active' : ''}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  + Add / Update Project
-                </Link>
               </>
             ) : (
-              <Link 
-                to="/login" 
-                className="mobile-drawer-item mobile-drawer-btn"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Sign In to Workspace &rarr;
-              </Link>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 0' }}>
+                <Link 
+                  to="/dashboard" 
+                  className="mobile-drawer-item"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/login" 
+                  className="mobile-drawer-item mobile-drawer-btn"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Sign In to Workspace &rarr;
+                </Link>
+              </div>
             )}
             <button
               type="button"
