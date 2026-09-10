@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Menu, Search, Bell, User, LogOut, ChevronDown, 
-  ExternalLink, Home, Shield, AlertTriangle
+  Home, Shield, AlertTriangle
 } from 'lucide-react';
 
 const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {

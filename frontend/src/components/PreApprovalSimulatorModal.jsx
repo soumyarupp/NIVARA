@@ -51,11 +51,11 @@ const PreApprovalSimulatorModal = ({ isOpen, onClose }) => {
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="reports-modal-body">
-          <form onSubmit={handleSimulate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+        <div className="reports-modal-body" style={{ padding: '24px 28px' }}>
+          <form onSubmit={handleSimulate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Sector</label>
-              <select value={sector} onChange={e => setSector(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Sector</label>
+              <select value={sector} onChange={e => setSector(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }}>
                 <option value="Roads & Highways">Roads &amp; Highways</option>
                 <option value="Railways">Railways</option>
                 <option value="Power & Energy">Power &amp; Energy</option>
@@ -65,8 +65,8 @@ const PreApprovalSimulatorModal = ({ isOpen, onClose }) => {
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>State / Region</label>
-              <select value={state} onChange={e => setState(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>State / Region</label>
+              <select value={state} onChange={e => setState(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }}>
                 <option value="Odisha">Odisha</option>
                 <option value="Bihar">Bihar</option>
                 <option value="Gujarat">Gujarat</option>
@@ -76,22 +76,22 @@ const PreApprovalSimulatorModal = ({ isOpen, onClose }) => {
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Implementing Agency</label>
-              <input type="text" value={agency} onChange={e => setAgency(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Implementing Agency</label>
+              <input type="text" value={agency} onChange={e => setAgency(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }} />
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Estimated Outlay (₹ Cr)</label>
-              <input type="number" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Estimated Outlay (₹ Cr)</label>
+              <input type="number" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }} />
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Planned Duration (Months)</label>
-              <input type="number" value={projectDurationMonths} onChange={e => setProjectDurationMonths(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Planned Duration (Months)</label>
+              <input type="number" value={projectDurationMonths} onChange={e => setProjectDurationMonths(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }} />
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" disabled={loading} style={{ width: '100%', background: '#6b21a8', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: '700', fontSize: '13.5px', cursor: 'pointer' }}>
+              <button type="submit" disabled={loading} style={{ width: '100%', background: '#6b21a8', color: '#ffffff', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'background 0.15s' }}>
                 {loading ? "Running Historical Benchmark Simulation..." : "Simulate Pre-Approval Risk Profile →"}
               </button>
             </div>

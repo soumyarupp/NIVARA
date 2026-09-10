@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, FolderKanban, Cpu, FileText, AlertTriangle, 
-  CheckSquare, Users, Settings, HelpCircle, LogOut, ChevronLeft, ChevronRight,
+  CheckSquare, Settings, HelpCircle, LogOut, ChevronLeft, ChevronRight,
   TrendingUp, Layers, ShieldCheck
 } from 'lucide-react';
 
@@ -15,6 +15,13 @@ const AdminSidebar = ({ isCollapsed, onToggleCollapse }) => {
     localStorage.removeItem('nivara_auth');
     navigate('/');
     window.location.reload();
+  };
+
+  const handleNavClick = () => {
+    // If on mobile (screen width < 1024), collapse after navigation
+    if (window.innerWidth <= 1024 && !isCollapsed) {
+      onToggleCollapse();
+    }
   };
 
   const navGroups = [
@@ -46,86 +53,97 @@ const AdminSidebar = ({ isCollapsed, onToggleCollapse }) => {
   ];
 
   return (
-    <aside className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-      {/* Brand Header */}
-      <div className="sidebar-brand-header">
-        <Link to="/dashboard" className="sidebar-brand-link">
-          <div className="sidebar-logo-wrapper">
-            <img src="NIVARA logo.png" alt="NIVARA Logo" className="sidebar-logo-img" />
-          </div>
-          {!isCollapsed && (
-            <div className="sidebar-brand-titles">
-              <span className="sidebar-brand-name">NIVARA</span>
-              <span className="sidebar-brand-sub">Predictive Governance</span>
+    <>
+      {/* Mobile Dark Backdrop Overlay */}
+      <div 
+        className={`mobile-sidebar-backdrop ${!isCollapsed ? 'active' : ''}`}
+        onClick={onToggleCollapse}
+        aria-hidden="true"
+      />
+
+      <aside className={`admin-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+        {/* Brand Header */}
+        <div className="sidebar-brand-header">
+          <Link to="/dashboard" className="sidebar-brand-link" onClick={handleNavClick}>
+            <div className="sidebar-logo-wrapper">
+              <img src="NIVARA logo.png" alt="NIVARA Logo" className="sidebar-logo-img" />
             </div>
-          )}
-        </Link>
-        <button 
-          type="button" 
-          className="sidebar-collapse-btn" 
-          onClick={onToggleCollapse}
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-        </button>
-      </div>
-
-      {/* Navigation Menu */}
-      <div className="sidebar-nav-container">
-        {navGroups.map((group, idx) => (
-          <div key={idx} className="sidebar-nav-group">
-            {!isCollapsed && <div className="sidebar-group-title">{group.title}</div>}
-            <ul className="sidebar-nav-list">
-              {group.items.map((item, itemIdx) => {
-                const IconComponent = item.icon;
-                const isActive = currentPath === item.path;
-                return (
-                  <li key={itemIdx}>
-                    <Link 
-                      to={item.path} 
-                      className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-                      title={isCollapsed ? item.label : undefined}
-                    >
-                      <IconComponent className="sidebar-nav-icon" size={18} />
-                      {!isCollapsed && <span className="sidebar-nav-label">{item.label}</span>}
-                      {!isCollapsed && item.badge && (
-                        <span className={`sidebar-badge ${item.badgeColor || ''}`}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {/* User Profile Footer */}
-      <div className="sidebar-footer-profile">
-        <div className="sidebar-user-avatar">
-          <ShieldCheck size={20} className="text-cyan-400" />
-        </div>
-        {!isCollapsed && (
-          <div className="sidebar-user-info">
-            <span className="sidebar-user-name">MoSPI Officer</span>
-            <span className="sidebar-user-role">Central Sector Admin</span>
-          </div>
-        )}
-        {!isCollapsed && (
+            {!isCollapsed && (
+              <div className="sidebar-brand-titles">
+                <span className="sidebar-brand-name">NIVARA</span>
+                <span className="sidebar-brand-sub">Predictive Governance</span>
+              </div>
+            )}
+          </Link>
           <button 
             type="button" 
-            className="sidebar-logout-icon-btn" 
-            onClick={handleLogout} 
-            title="Logout"
+            className="sidebar-collapse-btn" 
+            onClick={onToggleCollapse}
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            <LogOut size={16} />
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
-        )}
-      </div>
-    </aside>
+        </div>
+
+        {/* Navigation Menu */}
+        <div className="sidebar-nav-container">
+          {navGroups.map((group, idx) => (
+            <div key={idx} className="sidebar-nav-group">
+              {!isCollapsed && <div className="sidebar-group-title">{group.title}</div>}
+              <ul className="sidebar-nav-list">
+                {group.items.map((item, itemIdx) => {
+                  const IconComponent = item.icon;
+                  const isActive = currentPath === item.path;
+                  return (
+                    <li key={itemIdx}>
+                      <Link 
+                        to={item.path} 
+                        className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                        title={isCollapsed ? item.label : undefined}
+                        onClick={handleNavClick}
+                      >
+                        <IconComponent className="sidebar-nav-icon" size={18} />
+                        {!isCollapsed && <span className="sidebar-nav-label">{item.label}</span>}
+                        {!isCollapsed && item.badge && (
+                          <span className={`sidebar-badge ${item.badgeColor || ''}`}>
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* User Profile Footer */}
+        <div className="sidebar-footer-profile">
+          <div className="sidebar-user-avatar">
+            <ShieldCheck size={20} className="text-cyan-400" />
+          </div>
+          {!isCollapsed && (
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">MoSPI Officer</span>
+              <span className="sidebar-user-role">Central Sector Admin</span>
+            </div>
+          )}
+          {!isCollapsed && (
+            <button 
+              type="button" 
+              className="sidebar-logout-icon-btn" 
+              onClick={handleLogout} 
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+        </div>
+      </aside>
+    </>
   );
 };
 
 export default AdminSidebar;
+

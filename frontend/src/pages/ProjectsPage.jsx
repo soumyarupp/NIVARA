@@ -49,17 +49,17 @@ const ProjectsPage = () => {
         />
 
         {/* Scrollable Main Content */}
-        <main className="admin-scrollable-content px-6 py-6 sm:px-10 sm:py-8">
+        <main className="admin-scrollable-content">
           {/* ===== PAGE TITLE BANNER ===== */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs mb-6">
+          <div className="dashboard-banner mb-7">
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Central Sector Projects Workspace</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
               High-priority Central Sector infrastructure assets flagged for immediate ministerial review, state risk cluster analysis, and statutory clearance tracking.
             </p>
           </div>
 
           {/* ===== PROJECTS REQUIRING ATTENTION TABLE ===== */}
-          <section className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs mb-8" id="projects-attention">
+          <section className="dashboard-card mb-7" id="projects-attention">
             <div className="flex justify-between items-end flex-wrap gap-3 mb-5">
               <div>
                 <div className="flex items-center gap-2">
@@ -131,7 +131,7 @@ const ProjectsPage = () => {
           </section>
 
           {/* ===== NATIONAL INFRASTRUCTURE RISK MAP ===== */}
-          <section className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs" id="risk-map">
+          <section className="dashboard-card mb-7" id="risk-map">
             <div className="mb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">National Infrastructure Risk Map</h2>

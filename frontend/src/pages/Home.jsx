@@ -120,18 +120,18 @@ const Home = () => {
                 <text x="375" y="28" fill="#38bdf8" fontSize="10" fontWeight="700">AI Forecast</text>
               </svg>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', fontSize: '11.5px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.06)', padding: '14px 16px', borderRadius: '10px', fontSize: '12px', marginTop: '12px' }}>
                 <div>
-                  <span style={{ color: '#94a3b8', display: 'block' }}>Central Sector</span>
-                  <strong style={{ color: '#ffffff', fontSize: '13px' }}>186 Projects</strong>
+                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>Central Sector</span>
+                  <strong style={{ color: '#ffffff', fontSize: '13.5px' }}>186 Projects</strong>
                 </div>
                 <div>
-                  <span style={{ color: '#94a3b8', display: 'block' }}>Risk Signals</span>
-                  <strong style={{ color: '#f87171', fontSize: '13px' }}>118 Mitigated</strong>
+                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>Risk Signals</span>
+                  <strong style={{ color: '#f87171', fontSize: '13.5px' }}>118 Mitigated</strong>
                 </div>
                 <div>
-                  <span style={{ color: '#94a3b8', display: 'block' }}>Model Latency</span>
-                  <strong style={{ color: '#38bdf8', fontSize: '13px' }}>12ms</strong>
+                  <span style={{ color: '#94a3b8', display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>Model Latency</span>
+                  <strong style={{ color: '#38bdf8', fontSize: '13.5px' }}>12ms</strong>
                 </div>
               </div>
             </div>

@@ -57,17 +57,17 @@ const RiskIntelligencePage = () => {
         />
 
         {/* Scrollable Main Content */}
-        <main className="admin-scrollable-content px-6 py-6 sm:px-10 sm:py-8">
+        <main className="admin-scrollable-content">
           {/* ===== PAGE TITLE BANNER ===== */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs mb-6">
+          <div className="dashboard-banner mb-7">
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">AI-Powered Infrastructure Risk Intelligence</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
               Operational machine learning engines for automated anomaly detection, NLP remarks parsing, fund-versus-physical progress mismatch detection, pre-approval risk scoring, and delay impact simulation.
             </p>
           </div>
 
           {/* ===== THE SIX NIVARA AI FEATURES ===== */}
-          <section className="dashboard-section" id="ai-features">
+          <section id="ai-features">
             <div className="ai-features-grid">
 
               {/* Feature 1 */}

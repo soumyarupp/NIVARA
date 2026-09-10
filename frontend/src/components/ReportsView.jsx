@@ -10,6 +10,21 @@ const ReportsView = ({ isModal = false, onClose = null, initialProjectId = null 
   const [predictionData, setPredictionData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
+  const loadProjectReport = useCallback(async (projectId) => {
+    setActiveProjectId(projectId);
+    setCurrentView('loading');
+    setErrorMessage(null);
+    try {
+      const pred = await PredictionAPI.getProjectPrediction(projectId);
+      setPredictionData(pred);
+      setCurrentView('detail');
+    } catch (err) {
+      console.error("Prediction inference error:", err);
+      setErrorMessage(err.message || "Unable to compute predictive inferences.");
+      setCurrentView('error');
+    }
+  }, []);
+
   // Load Projects on mount
   useEffect(() => {
     let isMounted = true;
@@ -28,22 +43,7 @@ const ReportsView = ({ isModal = false, onClose = null, initialProjectId = null 
     }
     initProjects();
     return () => { isMounted = false; };
-  }, [initialProjectId]);
-
-  const loadProjectReport = useCallback(async (projectId) => {
-    setActiveProjectId(projectId);
-    setCurrentView('loading');
-    setErrorMessage(null);
-    try {
-      const pred = await PredictionAPI.getProjectPrediction(projectId);
-      setPredictionData(pred);
-      setCurrentView('detail');
-    } catch (err) {
-      console.error("Prediction inference error:", err);
-      setErrorMessage(err.message || "Unable to compute predictive inferences.");
-      setCurrentView('error');
-    }
-  }, []);
+  }, [initialProjectId, loadProjectReport]);
 
   const handleBackToList = () => {
     setCurrentView('list');
@@ -316,6 +316,11 @@ const ReportsView = ({ isModal = false, onClose = null, initialProjectId = null 
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                 Print / Export
               </button>
+              {isModal && onClose && (
+                <button type="button" className="btn-action-outline" onClick={onClose} title="Close modal">
+                  Close
+                </button>
+              )}
             </div>
           </div>
 

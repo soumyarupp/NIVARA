@@ -65,11 +65,11 @@ const AIChatModal = ({ isOpen, onClose }) => {
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="reports-modal-body" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 75px)', padding: '16px' }}>
+        <div className="reports-modal-body" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 75px)', padding: '20px 24px' }}>
           
           {/* Quick sample prompt chips */}
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#64748b', whiteSpace: 'nowrap', alignSelf: 'center' }}>Suggested:</span>
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', whiteSpace: 'nowrap', alignSelf: 'center' }}>Suggested:</span>
             {[
               "Show me all high-risk road projects in Bihar over ₹500 crore",
               "Send alert to nodal officer for NH-27",
@@ -84,8 +84,8 @@ const AIChatModal = ({ isOpen, onClose }) => {
                   color: '#3730a3',
                   border: '1px solid #c7d2fe',
                   borderRadius: '16px',
-                  padding: '4px 10px',
-                  fontSize: '11.5px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
                   fontWeight: '600',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap'
@@ -97,17 +97,18 @@ const AIChatModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Chat Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', background: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {messages.map((m, idx) => (
               <div key={idx} style={{ alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                 <div
                   style={{
                     background: m.sender === 'user' ? '#4f46e5' : '#f1f5f9',
                     color: m.sender === 'user' ? '#ffffff' : '#0f172a',
-                    padding: '10px 14px',
+                    padding: '12px 16px',
                     borderRadius: '12px',
                     fontSize: '13.5px',
-                    lineHeight: '1.5'
+                    lineHeight: '1.55',
+                    boxShadow: m.sender === 'user' ? '0 2px 6px rgba(79, 70, 229, 0.2)' : 'none'
                   }}
                 >
                   {m.text}
@@ -115,29 +116,29 @@ const AIChatModal = ({ isOpen, onClose }) => {
 
                 {/* Structured project results table if returned by query */}
                 {m.projects && m.projects.length > 0 && (
-                  <div style={{ marginTop: '10px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', textAlgin: 'left' }}>
+                  <div style={{ marginTop: '12px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', fontSize: '12.5px', borderCollapse: 'collapse', textAlign: 'left' }}>
                       <thead>
                         <tr style={{ background: '#e2e8f0', color: '#334155' }}>
-                          <th style={{ padding: '6px 10px' }}>Project ID</th>
-                          <th style={{ padding: '6px 10px' }}>Name</th>
-                          <th style={{ padding: '6px 10px' }}>Cost</th>
-                          <th style={{ padding: '6px 10px' }}>Risk Level</th>
-                          <th style={{ padding: '6px 10px' }}>Delay</th>
+                          <th style={{ padding: '8px 12px' }}>Project ID</th>
+                          <th style={{ padding: '8px 12px' }}>Name</th>
+                          <th style={{ padding: '8px 12px' }}>Cost</th>
+                          <th style={{ padding: '8px 12px' }}>Risk Level</th>
+                          <th style={{ padding: '8px 12px' }}>Delay</th>
                         </tr>
                       </thead>
                       <tbody>
                         {m.projects.map((p, pIdx) => (
                           <tr key={pIdx} style={{ borderTop: '1px solid #e2e8f0' }}>
-                            <td style={{ padding: '6px 10px', fontFamily: 'monospace', fontWeight: '700' }}>{p.id}</td>
-                            <td style={{ padding: '6px 10px', fontWeight: '600' }}>{p.name}</td>
-                            <td style={{ padding: '6px 10px' }}>₹{p.cost} Cr</td>
-                            <td style={{ padding: '6px 10px' }}>
-                              <span className={`risk-level-pill ${p.riskLevel.toLowerCase()}`} style={{ fontSize: '10px', padding: '1px 6px' }}>
+                            <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontWeight: '700' }}>{p.id}</td>
+                            <td style={{ padding: '8px 12px', fontWeight: '600' }}>{p.name}</td>
+                            <td style={{ padding: '8px 12px' }}>₹{p.cost} Cr</td>
+                            <td style={{ padding: '8px 12px' }}>
+                              <span className={`risk-level-pill ${p.riskLevel.toLowerCase()}`} style={{ fontSize: '10.5px', padding: '2px 8px' }}>
                                 {p.riskLevel}
                               </span>
                             </td>
-                            <td style={{ padding: '6px 10px', color: '#b91c1c', fontWeight: '700' }}>+{p.delayDays}d</td>
+                            <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: '700' }}>+{p.delayDays}d</td>
                           </tr>
                         ))}
                       </tbody>
@@ -148,7 +149,7 @@ const AIChatModal = ({ isOpen, onClose }) => {
             ))}
 
             {loading && (
-              <div style={{ alignSelf: 'flex-start', background: '#f1f5f9', padding: '10px 14px', borderRadius: '12px', fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ alignSelf: 'flex-start', background: '#f1f5f9', padding: '12px 16px', borderRadius: '12px', fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', animation: 'spin 1s infinite' }}></span>
                 Processing inquiry against NIVARA project database...
               </div>
@@ -156,18 +157,18 @@ const AIChatModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Form Input */}
-          <form onSubmit={handleSend} style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
             <input
               type="text"
               placeholder="Ask NIVARA Assistant about project costs, delays, risks, or states..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', outline: 'none' }}
+              style={{ flex: 1, padding: '11px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '13.5px', outline: 'none' }}
             />
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              style={{ background: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '0 18px', fontWeight: '700', cursor: 'pointer', fontSize: '13.5px' }}
+              style={{ background: '#4f46e5', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '0 22px', fontWeight: '700', cursor: 'pointer', fontSize: '13.5px', transition: 'background 0.15s' }}
             >
               Send
             </button>

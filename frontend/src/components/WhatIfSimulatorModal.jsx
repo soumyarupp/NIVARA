@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import simulatorApi from '../api/simulatorApi';
 
-const WhatIfSimulatorModal = ({ isOpen, onClose }) => {
-  const [projectId, setProjectId] = useState('NH27-BR-001');
+const WhatIfSimulatorModal = ({ isOpen, onClose, projectId = 'NH27-BR-001' }) => {
   const [delayMonths, setDelayMonths] = useState(6);
   const [loading, setLoading] = useState(false);
   const [simulation, setSimulation] = useState({
@@ -54,11 +53,11 @@ const WhatIfSimulatorModal = ({ isOpen, onClose }) => {
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="reports-modal-body">
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <label style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>
-                Additional Delay Projection: <span style={{ color: '#ea580c', fontSize: '18px' }}>{delayMonths} Months</span>
+        <div className="reports-modal-body" style={{ padding: '24px 28px' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '22px 24px', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>
+                Additional Delay Projection: <span style={{ color: '#ea580c', fontSize: '18px', marginLeft: '6px' }}>{delayMonths} Months</span>
               </label>
               <span className={`risk-level-pill ${simulation.riskLevel.toLowerCase()}`}>
                 {simulation.riskLevel} ESCALATION
@@ -66,7 +65,7 @@ const WhatIfSimulatorModal = ({ isOpen, onClose }) => {
             </div>
 
             {/* Slider */}
-            <div style={{ padding: '0 8px', marginBottom: '20px' }}>
+            <div style={{ padding: '4px 4px', marginBottom: '22px' }}>
               <input
                 type="range"
                 min="0"
@@ -76,7 +75,7 @@ const WhatIfSimulatorModal = ({ isOpen, onClose }) => {
                 onChange={e => setDelayMonths(parseInt(e.target.value, 10))}
                 style={{ width: '100%', accentColor: '#ea580c', cursor: 'pointer' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#64748b', marginTop: '8px' }}>
                 <span>0 months (On Time)</span>
                 <span>3 mos</span>
                 <span>6 mos</span>
@@ -86,23 +85,23 @@ const WhatIfSimulatorModal = ({ isOpen, onClose }) => {
             </div>
 
             {/* Simulation Results Display Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div style={{ background: '#fff7ed', border: '1px solid #ffedd5', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div style={{ background: '#fff7ed', border: '1px solid #ffedd5', borderRadius: '10px', padding: '18px 20px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '700', color: '#c2410c', textTransform: 'uppercase' }}>Estimated Outlay Cost Overrun</span>
-                <div style={{ fontSize: '26px', fontWeight: '800', color: '#9a3412', marginTop: '4px' }}>
+                <div style={{ fontSize: '26px', fontWeight: '800', color: '#9a3412', marginTop: '6px' }}>
                   +₹{simulation.estimatedAdditionalCost} Cr
                 </div>
-                <span style={{ fontSize: '12px', color: '#ea580c', fontWeight: '700' }}>
+                <span style={{ fontSize: '12px', color: '#ea580c', fontWeight: '700', display: 'block', marginTop: '4px' }}>
                   (+{simulation.additionalCostPercentage}% budget inflation)
                 </span>
               </div>
 
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px 20px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569', textTransform: 'uppercase' }}>Revised Completion Date</span>
-                <div style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a', marginTop: '4px' }}>
+                <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>
                   {simulation.newCompletionDate}
                 </div>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                <span style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginTop: '4px' }}>
                   Baseline Completion: {simulation.originalCompletionDate}
                 </span>
               </div>
@@ -110,7 +109,7 @@ const WhatIfSimulatorModal = ({ isOpen, onClose }) => {
 
           </div>
 
-          <div style={{ fontSize: '12px', color: '#64748b', textAlign: 'center' }}>
+          <div style={{ fontSize: '12.5px', color: '#64748b', textAlign: 'center' }}>
             {loading ? "Recalculating ML escalation models..." : "Adjust slider to evaluate sensitivity across milestone packages."}
           </div>
         </div>

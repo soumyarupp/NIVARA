@@ -44,71 +44,71 @@ const DelayClassifierModal = ({ isOpen, onClose }) => {
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="reports-modal-body">
-          <form onSubmit={handleClassify} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div className="reports-modal-body" style={{ padding: '24px 28px' }}>
+          <form onSubmit={handleClassify} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Project Reference</label>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Project Reference</label>
               <input
                 type="text"
                 value={projectId}
                 onChange={e => setProjectId(e.target.value)}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }}
               />
             </div>
 
             <div>
-              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Official Delay Remark / Field Inspection Note</label>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Official Delay Remark / Field Inspection Note</label>
               <textarea
                 rows={4}
                 value={remarkText}
                 onChange={e => setRemarkText(e.target.value)}
                 placeholder="Enter official delay explanation remark..."
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', outline: 'none', boxSizing: 'border-box', lineHeight: '1.5' }}
               />
             </div>
 
             <button
               type="submit"
               disabled={loading || !remarkText.trim()}
-              style={{ background: '#7c3aed', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: '700', fontSize: '13.5px', cursor: 'pointer' }}
+              style={{ background: '#7c3aed', color: '#ffffff', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'background 0.15s' }}
             >
               {loading ? "Analyzing Text with NIVARA NLP Engine..." : "Analyze & Classify Remark →"}
             </button>
           </form>
 
           {result && (
-            <div style={{ marginTop: '20px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '18px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>NLP Analysis Output</div>
+            <div style={{ marginTop: '24px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '20px 22px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '10px' }}>NLP Analysis Output</div>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>{result.label}</span>
-                <span style={{ background: '#ede9fe', color: '#6d28d9', fontSize: '12px', fontWeight: '800', padding: '4px 10px', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>{result.label}</span>
+                <span style={{ background: '#ede9fe', color: '#6d28d9', fontSize: '12px', fontWeight: '800', padding: '5px 12px', borderRadius: '12px' }}>
                   Category Code: {result.category}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                <span style={{ fontSize: '12.5px', color: '#475569' }}>Classification Confidence:</span>
-                <div style={{ flex: 1, background: '#e2e8f0', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>Classification Confidence:</span>
+                <div style={{ flex: 1, background: '#e2e8f0', height: '9px', borderRadius: '5px', overflow: 'hidden' }}>
                   <div style={{ width: `${Math.round(result.confidence * 100)}%`, background: '#7c3aed', height: '100%' }}></div>
                 </div>
-                <strong style={{ fontSize: '13px', color: '#7c3aed' }}>{Math.round(result.confidence * 100)}%</strong>
+                <strong style={{ fontSize: '13.5px', color: '#7c3aed' }}>{Math.round(result.confidence * 100)}%</strong>
               </div>
 
               {/* Categorized Statistics Overview */}
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', marginTop: '12px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '700', color: '#475569' }}>National Sector Classification Breakdown:</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px', fontSize: '12px' }}>
-                  <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginTop: '16px' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569' }}>National Sector Classification Breakdown:</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px', fontSize: '12.5px' }}>
+                  <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     🌳 Forest/Env Clearance: <strong>38%</strong>
                   </div>
-                  <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     🏞️ Land Acquisition: <strong>31%</strong>
                   </div>
-                  <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     🚜 Contractor Issues: <strong>19%</strong>
                   </div>
-                  <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     💰 Funding Disbursal: <strong>12%</strong>
                   </div>
                 </div>

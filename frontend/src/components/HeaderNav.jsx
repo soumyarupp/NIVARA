@@ -7,6 +7,7 @@ const HeaderNav = ({ activeKey }) => {
   const [fontScale, setFontScale] = useState(1);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const currentPath = activeKey || location.pathname;
 
@@ -55,9 +56,9 @@ const HeaderNav = ({ activeKey }) => {
           </div>
         </div>
 
-        {/* Authenticated Workspace Links */}
+        {/* Authenticated Workspace Links (Desktop) */}
         {isAuthenticated && (
-          <nav className="header-nav">
+          <nav className="header-nav header-nav-desktop">
             <Link to="/projects" className={`nav-link ${currentPath === '/projects' ? 'active' : ''}`}>Projects</Link>
             <Link to="/dashboard" className={`nav-link ${currentPath === '/dashboard' ? 'active' : ''}`}>Dashboard</Link>
             <Link to="/risk-intelligence" className={`nav-link ${currentPath === '/risk-intelligence' ? 'active' : ''}`}>Risk Intelligence</Link>
@@ -65,8 +66,8 @@ const HeaderNav = ({ activeKey }) => {
           </nav>
         )}
 
-        {/* Right Section: Home and Contact Us text navigation links */}
-        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        {/* Right Section: Desktop Navigation Links */}
+        <div className="header-right header-right-desktop">
           <Link
             to="/"
             className={`nav-link ${currentPath === '/' ? 'active' : ''}`}
@@ -103,11 +104,108 @@ const HeaderNav = ({ activeKey }) => {
           )}
 
           <div className="font-controls">
-            <button type="button" className="font-btn" onClick={handleFontDecrease}>A-</button>
-            <button type="button" className="font-btn" onClick={handleFontIncrease}>A+</button>
+            <button type="button" className="font-btn" onClick={handleFontDecrease} title="Decrease font size">A-</button>
+            <button type="button" className="font-btn" onClick={handleFontIncrease} title="Increase font size">A+</button>
           </div>
         </div>
+
+        {/* Mobile Hamburger Button */}
+        <div className="header-mobile-toggle-wrapper">
+          <button 
+            type="button" 
+            className="header-mobile-hamburger"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle Navigation Menu"
+          >
+            {isMobileMenuOpen ? (
+              <span style={{ fontSize: '22px', lineHeight: 1 }}>&times;</span>
+            ) : (
+              <span style={{ fontSize: '20px', lineHeight: 1 }}>&#9776;</span>
+            )}
+          </button>
+        </div>
       </header>
+
+      {/* Mobile Drawer Menu */}
+      {isMobileMenuOpen && (
+        <div className="mobile-header-drawer">
+          <div className="mobile-drawer-links">
+            <Link 
+              to="/" 
+              className={`mobile-drawer-item ${currentPath === '/' ? 'active' : ''}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              Home
+            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link 
+                  to="/projects" 
+                  className={`mobile-drawer-item ${currentPath === '/projects' ? 'active' : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Projects Registry
+                </Link>
+                <Link 
+                  to="/dashboard" 
+                  className={`mobile-drawer-item ${currentPath === '/dashboard' ? 'active' : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Operational Dashboard
+                </Link>
+                <Link 
+                  to="/risk-intelligence" 
+                  className={`mobile-drawer-item ${currentPath === '/risk-intelligence' ? 'active' : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Risk Intelligence (6 AI)
+                </Link>
+                <Link 
+                  to="/reports" 
+                  className={`mobile-drawer-item ${currentPath === '/reports' ? 'active' : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Predictive Reports
+                </Link>
+                <Link 
+                  to="/add-project" 
+                  className={`mobile-drawer-item ${currentPath === '/add-project' ? 'active' : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  + Add / Update Project
+                </Link>
+              </>
+            ) : (
+              <Link 
+                to="/login" 
+                className="mobile-drawer-item mobile-drawer-btn"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Sign In to Workspace &rarr;
+              </Link>
+            )}
+            <button
+              type="button"
+              className="mobile-drawer-item text-left"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsContactOpen(true);
+              }}
+            >
+              Contact Support
+            </button>
+            {isAuthenticated && (
+              <button
+                type="button"
+                className="mobile-drawer-item text-red-400 font-bold"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ===== Contact Us Modal ===== */}
       {isContactOpen && (

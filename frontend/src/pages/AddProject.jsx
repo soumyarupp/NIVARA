@@ -22,13 +22,6 @@ const AddProject = () => {
   const totalSteps = 5;
   const visitedSteps = new Set([1]);
 
-  // Dynamic state stores
-  let additionalCostRows = [];
-  let otherFundingRows = [];
-  let customClearances = [];
-  let tenderPackages = [];
-  let uploadedFiles = [];
-
   // DOM Elements
   const stepNodes = document.querySelectorAll(".step-node");
   const stepCards = document.querySelectorAll(".form-step-card");
@@ -829,7 +822,7 @@ const AddProject = () => {
         />
 
         {/* Scrollable Main Content */}
-        <main className="admin-scrollable-content px-6 py-6 sm:px-10 sm:py-8">
+        <main className="admin-scrollable-content space-y-6 sm:space-y-8">
 
     {/* Top Intro & Status Bar */}
     <div className="page-intro-header">

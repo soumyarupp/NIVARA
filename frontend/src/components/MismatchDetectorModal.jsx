@@ -49,37 +49,37 @@ const MismatchDetectorModal = ({ isOpen, onClose }) => {
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="reports-modal-body">
-          <form onSubmit={handleAnalyze} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+        <div className="reports-modal-body" style={{ padding: '24px 28px' }}>
+          <form onSubmit={handleAnalyze} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Project ID</label>
-              <input type="text" value={projectId} onChange={e => setProjectId(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Project ID</label>
+              <input type="text" value={projectId} onChange={e => setProjectId(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }} />
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Total Sanctioned Budget (₹ Cr)</label>
-              <input type="number" value={totalBudget} onChange={e => setTotalBudget(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Total Sanctioned Budget (₹ Cr)</label>
+              <input type="number" value={totalBudget} onChange={e => setTotalBudget(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }} />
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Financial Expenditure Disbursed (₹ Cr)</label>
-              <input type="number" value={expenditure} onChange={e => setExpenditure(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Financial Expenditure Disbursed (₹ Cr)</label>
+              <input type="number" value={expenditure} onChange={e => setExpenditure(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }} />
             </div>
 
             <div>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '4px' }}>Reported Physical Progress (%)</label>
-              <input type="number" value={physicalProgress} onChange={e => setPhysicalProgress(e.target.value)} min="0" max="100" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              <label style={{ fontSize: '12.5px', fontWeight: '700', color: '#475569', display: 'block', marginBottom: '6px' }}>Reported Physical Progress (%)</label>
+              <input type="number" value={physicalProgress} onChange={e => setPhysicalProgress(e.target.value)} min="0" max="100" style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }} />
             </div>
 
             <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" disabled={loading} style={{ width: '100%', background: '#0284c7', color: '#ffffff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: '700', fontSize: '13.5px', cursor: 'pointer' }}>
+              <button type="submit" disabled={loading} style={{ width: '100%', background: '#0284c7', color: '#ffffff', border: 'none', padding: '12px 20px', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', transition: 'background 0.15s' }}>
                 {loading ? "Calculating Telemetry Discrepancy..." : "Detect Mismatch & Evaluate Risk →"}
               </button>
             </div>
           </form>
 
           {result && (
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px' }}>
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '22px 24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>Telemetry Discrepancy Report</h4>
                 <span className={`risk-level-pill ${result.riskLevel.toLowerCase()}`}>

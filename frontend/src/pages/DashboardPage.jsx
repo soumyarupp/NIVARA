@@ -4,24 +4,12 @@ import './Reports.css';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminTopHeader from '../components/AdminTopHeader';
 import Footer from '../components/Footer';
-import dashboardApi from '../api/dashboardApi';
 import projectApi from '../api/projectApi';
 import ProjectDashboard from '../components/ProjectDashboard';
 import ReportsView from '../components/ReportsView';
 
 const DashboardPage = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [overview, setOverview] = useState({
-    summary: {
-      totalProjects: 186,
-      onTrack: 124,
-      atRisk: 44,
-      critical: 18,
-      totalMonitoredOutlay: "₹48.2 Lakh Crore",
-      projectsAtRisk: "118 Projects"
-    }
-  });
-
   const [projects, setProjects] = useState([]);
   const [activeModal, setActiveModal] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -29,10 +17,6 @@ const DashboardPage = () => {
   useEffect(() => {
     async function loadData() {
       try {
-        const data = await dashboardApi.getOverview();
-        if (data && data.summary) {
-          setOverview(data);
-        }
         const projRes = await projectApi.getProjects();
         if (projRes && projRes.projects) {
           setProjects(projRes.projects);
@@ -66,7 +50,7 @@ const DashboardPage = () => {
         />
 
         {/* Scrollable Dashboard View */}
-        <main className="admin-scrollable-content px-6 py-6 sm:px-10 sm:py-8">
+        <main className="admin-scrollable-content">
           <ProjectDashboard 
             projects={projects} 
             onInspect={handleInspectProject} 
