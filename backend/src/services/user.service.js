@@ -161,6 +161,14 @@ export const createUserAccount = async ({
     defaultDesignation = 'Joint Secretary / Ministry Nodal Officer';
     defaultDepartment = 'Infrastructure Planning & Project Directorate';
     defaultEmployeeId = `MIN-${Math.floor(100 + Math.random() * 900)}`;
+  } else if (targetRole === 'SUPER_ADMIN') {
+    defaultDesignation = 'Principal Secretary / Super Administrator';
+    defaultDepartment = 'Cabinet Secretariat / Central Project Monitoring Cell';
+    defaultEmployeeId = `NIVARA-SA-${Math.floor(100 + Math.random() * 900)}`;
+  } else if (targetRole === 'IPMD_ADMIN') {
+    defaultDesignation = 'Director & IPMD Administrator';
+    defaultDepartment = 'Infrastructure Project Monitoring Division';
+    defaultEmployeeId = `IPMD-DIR-${Math.floor(100 + Math.random() * 900)}`;
   }
 
   const finalDesignation = (userData.designation || '').trim() || defaultDesignation;

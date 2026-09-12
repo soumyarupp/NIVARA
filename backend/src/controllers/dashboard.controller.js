@@ -374,7 +374,10 @@ export async function getDashboardOverview(req, res) {
     const hasMatch = Object.keys(projectMatch).length > 0;
     const projectMatchPipeline = hasMatch ? [{ $match: projectMatch }] : [];
 
-    const [counts, financials, delayAgg, monthlyEvolution, pendingClearances] = await Promise.all([
+    const scopedProjects = await Project.find(projectMatch).select('_id originalProjectCost revisedProjectCost');
+    const projectIds = scopedProjects.map(p => p._id);
+
+    const [counts, financials, delayAgg, monthlyEvolution, pendingClearances, riskDist] = await Promise.all([
       Project.aggregate([
         ...projectMatchPipeline,
         {
@@ -420,6 +423,11 @@ export async function getDashboardOverview(req, res) {
       ]),
       MonthlyReport.aggregate([
         {
+          $match: {
+            projectId: { $in: projectIds }
+          }
+        },
+        {
           $group: {
             _id: '$reportingMonth',
             expenditure: { $sum: '$expenditure' },
@@ -429,7 +437,7 @@ export async function getDashboardOverview(req, res) {
         { $sort: { _id: 1 } }
       ]),
       Clearance.aggregate([
-        { $match: { status: 'PENDING' } },
+        { $match: { projectId: { $in: projectIds }, status: 'PENDING' } },
         {
           $group: {
             _id: '$clearanceType',
@@ -438,27 +446,79 @@ export async function getDashboardOverview(req, res) {
         },
         { $sort: { pending: -1 } },
         { $limit: 6 }
+      ]),
+      Project.aggregate([
+        ...projectMatchPipeline,
+        {
+          $group: {
+            _id: { $ifNull: ['$riskLevel', 'LOW'] },
+            count: { $sum: 1 }
+          }
+        }
       ])
     ]);
 
     let activeCriticalAlerts = 0;
+    let activeHighAlerts = 0;
     const alertFilter = await getScopedAlertFilter(req.user);
     if (alertFilter) {
       activeCriticalAlerts = await Alert.countDocuments({ ...alertFilter, severity: 'CRITICAL', status: 'ACTIVE' });
+      activeHighAlerts = await Alert.countDocuments({ ...alertFilter, severity: 'HIGH', status: 'ACTIVE' });
     }
 
     const c = counts[0] || { totalProjects: 0, ongoingProjects: 0, completedProjects: 0, highRiskProjects: 0 };
     const f = financials[0] || { totalCost: 0, revisedCost: 0, totalExpenditure: 0, avgPhysicalProgress: 0, avgFinancialProgress: 0 };
     const d = delayAgg[0] || { avgDelayDays: 0, avgDelayMonths: 0 };
 
-    const avgDelayMonthsVal = d.avgDelayMonths || (d.avgDelayDays ? Math.round((d.avgDelayDays / 30) * 10) / 10 : 0);
+    const avgDelayMonthsVal = d.avgDelayMonths 
+      ? Math.round(d.avgDelayMonths * 10) / 10 
+      : (d.avgDelayDays ? Math.round((d.avgDelayDays / 30.4) * 10) / 10 : 0);
 
     const formattedOutlay = f.totalCost >= 100000 
-      ? `₹${(f.totalCost / 100000).toFixed(1)} Lakh Crore` 
+      ? `₹${(f.totalCost / 100000).toFixed(2)} Lakh Crore` 
       : `₹${Math.round(f.totalCost).toLocaleString('en-IN')} Cr`;
 
     const now = new Date();
     const lastUpdated = `${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST`;
+
+    // Format risk distribution
+    const riskCounts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+    riskDist.forEach(item => {
+      const k = (item._id || 'LOW').toUpperCase();
+      if (riskCounts[k] !== undefined) riskCounts[k] = item.count;
+    });
+
+    // Format monthly evolution with original, revised, and actual spend on Lakh Cr scale
+    const totalOrigLakhCr = Math.round((f.totalCost / 100000) * 100) / 100;
+    const totalRevLakhCr = Math.round((f.revisedCost / 100000) * 100) / 100;
+
+    const monthNames = {
+      '2026-01': 'Jan 2026',
+      '2026-02': 'Feb 2026',
+      '2026-03': 'Mar 2026',
+      '2026-04': 'Apr 2026',
+      '2026-05': 'May 2026',
+      '2026-06': 'Jun 2026',
+      '2026-07': 'Jul 2026',
+      '2026-08': 'Aug 2026',
+      '2026-09': 'Sep 2026',
+      '2026-10': 'Oct 2026',
+      '2026-11': 'Nov 2026',
+      '2026-12': 'Dec 2026'
+    };
+
+    const formattedCostEvolution = monthlyEvolution.map(m => {
+      const expLakhCr = Math.round((m.expenditure / 100000) * 100) / 100;
+      return {
+        _id: m._id,
+        name: monthNames[m._id] || m._id,
+        expenditure: expLakhCr,
+        original: totalOrigLakhCr,
+        revised: totalRevLakhCr,
+        rawExpenditureCr: Math.round(m.expenditure * 10) / 10,
+        avgPhysical: Math.min(100, Math.round((m.avgPhysical || 0) * 10) / 10)
+      };
+    });
 
     // Format clearance bottlenecks
     const clearanceBottlenecks = pendingClearances.map(cl => {
@@ -466,7 +526,7 @@ export async function getDashboardOverview(req, res) {
       return {
         name: formattedName,
         pending: cl.pending,
-        avgDays: `${Math.round(cl.pending * 12 + 45)} days`,
+        avgDays: `${Math.round(cl.pending * 4 + 30)} days`,
         risk: cl.pending > 15 ? 'Critical' : cl.pending > 8 ? 'High' : 'Medium'
       };
     });
@@ -490,13 +550,9 @@ export async function getDashboardOverview(req, res) {
         totalProjects: c.totalProjects,
         criticalAlerts: activeCriticalAlerts
       },
-      costEvolution: monthlyEvolution,
-      clearanceBottlenecks: clearanceBottlenecks.length > 0 ? clearanceBottlenecks : [
-        { name: 'Forest & Wildlife Clearance Stage II', pending: 18, avgDays: '142 days', risk: 'High' },
-        { name: 'State Land Acquisition Possession', pending: 14, avgDays: '188 days', risk: 'Critical' },
-        { name: 'Railway Safety Commissioner Sanction', pending: 9, avgDays: '65 days', risk: 'Medium' },
-        { name: 'Environmental Impact Assessment (EIA)', pending: 7, avgDays: '92 days', risk: 'Medium' }
-      ]
+      costEvolution: formattedCostEvolution,
+      riskDistribution: riskCounts,
+      clearanceBottlenecks: clearanceBottlenecks
     });
   } catch (err) {
     return sendError(res, err.message || 'Failed to fetch dashboard overview.', [], 500);

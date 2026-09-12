@@ -31,7 +31,6 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['ALERT', 'REPORT_DUE', 'STATUS_CHANGE', 'ASSIGNMENT', 'SYSTEM'],
       default: 'ALERT'
     },
     severity: {

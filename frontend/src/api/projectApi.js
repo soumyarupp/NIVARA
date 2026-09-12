@@ -119,6 +119,30 @@ const ProjectAPI = {
     return apiClient.get(`/api/projects/${projectId}/reporting-officers`);
   },
 
+  async getUniqueRegistrationNumber() {
+    try {
+      const res = await apiClient.get('/api/projects/generate-registration-number');
+      const regNum = res?.data?.registrationNumber || res?.registrationNumber;
+      if (regNum) {
+        return String(regNum);
+      }
+      return String(Math.floor(100000 + Math.random() * 900000));
+    } catch (err) {
+      console.warn("Could not fetch registration number from server, falling back to local unique candidate:", err.message);
+      return String(Math.floor(100000 + Math.random() * 900000));
+    }
+  },
+
+  async getProjectAiPrediction(projectId) {
+    try {
+      const res = await apiClient.get(`/api/projects/${projectId}/ai-prediction`);
+      return res?.data || res;
+    } catch (err) {
+      console.warn("Error fetching AI prediction:", err.message);
+      return null;
+    }
+  },
+
   async saveProjectDraft(formData) {
     await new Promise(resolve => setTimeout(resolve, 350));
     try {
@@ -152,56 +176,65 @@ const ProjectAPI = {
   },
 
   async submitProject(formData) {
-    try {
-      // Post to real backend API first
-      const payload = {
-        projectName: formData.name || formData.projectName,
-        projectCode: formData.projectCode || `NIV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-        sector: formData.sector,
-        subsector: formData.subsector,
-        projectType: formData.projectType,
-        scheme: formData.scheme,
-        classification: formData.classification,
-        implementationMode: formData.implementationMode,
-        projectStatus: 'SUBMITTED',
-        status: 'IN_PROGRESS',
-        startDate: formData.startDate,
-        targetCompletionDate: formData.completionDate,
-        originalProjectCost: Number(formData.totalCost) || 0,
-        sanctionedCost: Number(formData.totalCost) || 0,
-        expenditure: 0,
-        physicalProgress: 0,
-        description: formData.description,
-        nodalOfficer: formData.nodalOfficer || null,
-        reportingOfficers: formData.reportingOfficers ? (Array.isArray(formData.reportingOfficers) ? formData.reportingOfficers : [formData.reportingOfficers]) : []
-      };
+    const payload = {
+      projectName: formData.name || formData.projectName,
+      projectCode: formData.projectCode || String(Math.floor(100000 + Math.random() * 900000)),
+      sector: formData.sector || 'Roads & Highways',
+      subsector: formData.subsector || '',
+      projectType: formData.projectType || 'EPC Turnkey',
+      scheme: formData.scheme || '',
+      classification: formData.classification || 'Greenfield',
+      implementationMode: formData.implementationMode || 'EPC',
+      projectStatus: 'SUBMITTED',
+      status: 'IN_PROGRESS',
+      stage: formData.stage || 'Under Implementation',
+      footprint: formData.footprint || 'Linear Corridor',
+      startDate: formData.startDate || new Date().toISOString().split('T')[0],
+      targetCompletionDate: formData.completionDate || formData.targetCompletionDate || null,
+      originalProjectCost: Number(formData.totalCost) || 0,
+      sanctionedCost: Number(formData.totalCost) || 0,
+      revisedProjectCost: Number(formData.revisedCost || formData.totalCost) || 0,
+      expenditure: 0,
+      physicalProgress: 0,
+      financialProgress: 0,
+      description: formData.description || '',
+      state: formData.state || 'Pan-India',
+      district: formData.district || '',
+      projectLocation: formData.district ? `${formData.district}, ${formData.state || ''}` : (formData.state || 'Pan-India'),
+      ministry: formData.ministry || '',
+      ministryId: formData.ministryId || null,
+      agency: formData.agency || '',
+      implementationAgencyId: formData.implementationAgencyId || null,
+      nodalOfficer: formData.nodalOfficer && typeof formData.nodalOfficer === 'string' && formData.nodalOfficer.length === 24 ? formData.nodalOfficer : null,
+      nodalOfficerName: formData.nodalOfficerName || '',
+      nodalOfficerEmail: formData.nodalOfficerEmail || '',
+      nodalOfficerPhone: formData.nodalOfficerPhone || '',
+      nodalOfficerDesignation: formData.nodalOfficerDesignation || '',
+      reportingOfficers: Array.isArray(formData.reportingOfficers) ? formData.reportingOfficers.filter(id => typeof id === 'string' && id.length === 24) : [],
+      reportingOfficerName: formData.reportingOfficerName || '',
+      reportingOfficerEmail: formData.reportingOfficerEmail || '',
+      reportingOfficerPhone: formData.reportingOfficerPhone || '',
+      reportingOfficerDesignation: formData.reportingOfficerDesignation || '',
+      clearances: formData.clearances || [],
+      milestones: formData.milestones || []
+    };
 
-      const backendRes = await apiClient.post('/api/projects', payload);
-      this.clearDraft();
+    const backendRes = await apiClient.post('/api/projects', payload);
+    this.clearDraft();
 
-      const created = backendRes?.data || backendRes;
-      return {
-        success: true,
-        projectId: created.projectCode || created._id,
-        trackingNumber: `TRK-${Date.now().toString().slice(-8)}`,
-        submittedAt: new Date().toISOString(),
-        data: created
-      };
-    } catch (err) {
-      console.warn("Backend project submission fallback to local:", err.message);
-      // Fallback to local submission record
-      const year = new Date().getFullYear();
-      const randomHex = Math.floor(1000 + Math.random() * 9000);
-      const projectId = `NIV-${year}-PRJ-${randomHex}`;
-      const trackingNumber = `TRK-${Date.now().toString().slice(-8)}`;
+    const created = backendRes?.data || backendRes;
+    return {
+      success: true,
+      projectId: created.projectCode || created._id,
+      trackingNumber: `TRK-${created.projectCode || Date.now().toString().slice(-8)}`,
+      submittedAt: created.createdAt || new Date().toISOString(),
+      data: created
+    };
+  },
 
-      return {
-        success: true,
-        projectId,
-        trackingNumber,
-        submittedAt: new Date().toISOString()
-      };
-    }
+  async updateProject(id, updateData) {
+    const res = await apiClient.put(`/api/projects/${id}`, updateData);
+    return res?.data || res;
   }
 };
 

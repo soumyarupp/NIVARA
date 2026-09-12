@@ -12,13 +12,13 @@ router.use(authenticate);
 
 router.patch(
   '/:id',
-  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN', 'NODAL_OFFICER'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN', 'NODAL_OFFICER', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'FIELD_OFFICER'),
   updateMilestone
 );
 
 router.delete(
   '/:id',
-  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN'),
+  authorize('SUPER_ADMIN', 'IPMD_ADMIN', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'NODAL_OFFICER'),
   deleteMilestone
 );
 

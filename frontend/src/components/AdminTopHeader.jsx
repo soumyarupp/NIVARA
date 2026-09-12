@@ -22,8 +22,10 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
   useEffect(() => {
     async function loadNotifs() {
       try {
-        const data = await notificationApi.getNotifications();
-        const list = Array.isArray(data) ? data : (data.notifications || []);
+        const res = await notificationApi.getNotifications();
+        const list = Array.isArray(res)
+          ? res
+          : (res?.notifications || res?.data?.notifications || res?.data || []);
         setNotifications(list.slice(0, 5));
         setUnreadCount(list.filter(n => !n.isRead).length);
       } catch (err) {
@@ -38,6 +40,29 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
     }
     loadNotifs();
   }, []);
+
+  const handleNotifClick = async (n) => {
+    setIsNotifOpen(false);
+    const notifId = n._id || n.id;
+    if (notifId && !n.isRead) {
+      try {
+        await notificationApi.markAsRead(notifId);
+        setNotifications(prev => prev.map(item => (item._id === notifId || item.id === notifId) ? { ...item, isRead: true } : item));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (_) {}
+    }
+    const pId = typeof n.projectId === 'object' && n.projectId !== null
+      ? (n.projectId.projectCode || n.projectId._id || n.projectId.id)
+      : n.projectId;
+
+    if (n.type === 'REPORT_DUE') {
+      navigate('/submit-report');
+    } else if (pId) {
+      navigate(`/projects/${pId}`);
+    } else {
+      navigate('/notifications');
+    }
+  };
 
   const handleLogout = async () => {
     if (logout) {
@@ -57,7 +82,7 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
             type="button" 
             className="admin-menu-toggle-btn"
             onClick={onToggleSidebar}
-            title="Toggle Navigation Sidebar"
+            title="Toggle Navigation Menu"
           >
             <Menu size={20} />
           </button>
@@ -97,7 +122,7 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
         <div className="admin-dropdown-container">
           <button 
             type="button" 
-            className="admin-header-btn notif-btn" 
+            className="admin-header-btn notif-btn cursor-pointer" 
             onClick={() => { setIsNotifOpen(!isNotifOpen); setIsProfileOpen(false); }}
             title="System Alerts & Notifications"
           >
@@ -108,7 +133,7 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
           </button>
 
           {isNotifOpen && (
-            <div className="admin-dropdown-menu notif-dropdown">
+            <div className="admin-dropdown-menu notif-dropdown shadow-xl border border-slate-200">
               <div className="dropdown-header">
                 <h3>System Notifications</h3>
                 {unreadCount > 0 && <span className="notif-badge">{unreadCount} New</span>}
@@ -118,17 +143,24 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
                   <div className="p-4 text-center text-xs text-slate-400">No new notifications</div>
                 ) : (
                   notifications.map((n, i) => (
-                    <div key={n._id || n.id || i} className={`dropdown-item notif-item ${n.type || 'info'}`}>
-                      <div className="notif-item-header">
-                        <strong className="notif-item-title">{n.title}</strong>
+                    <div 
+                      key={n._id || n.id || i} 
+                      onClick={() => handleNotifClick(n)}
+                      className={`dropdown-item notif-item ${n.type || 'info'} cursor-pointer hover:bg-slate-50 transition p-3 rounded-xl`}
+                    >
+                      <div className="notif-item-header flex items-center justify-between">
+                        <strong className="notif-item-title text-xs font-bold text-slate-900">{n.title}</strong>
+                        {!n.isRead && <span className="w-2 h-2 rounded-full bg-sky-500 shrink-0"></span>}
                       </div>
-                      <p className="notif-item-desc">{n.message || n.desc}</p>
+                      <p className="notif-item-desc text-[11px] text-slate-600 line-clamp-2 mt-1">{n.message || n.desc}</p>
                     </div>
                   ))
                 )}
               </div>
               <div className="dropdown-footer">
-                <Link to="/notifications" onClick={() => setIsNotifOpen(false)}>View All Notifications &rarr;</Link>
+                <Link to="/notifications" onClick={() => setIsNotifOpen(false)} className="text-xs font-bold text-sky-600 hover:text-sky-700">
+                  View All Notifications &rarr;
+                </Link>
               </div>
             </div>
           )}
@@ -158,18 +190,20 @@ const AdminTopHeader = ({ onToggleSidebar, activeKey = '/dashboard' }) => {
                 <span>{user?.designation || user?.email || formatRoleName(role)}</span>
                 <span className="user-status-pill">● Session Active</span>
               </div>
-              <ul className="profile-dropdown-links">
-                <li>
-                  <Link to="/projects" onClick={() => setIsProfileOpen(false)}>
-                    <User size={15} /> Monitored Projects
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/alerts" onClick={() => setIsProfileOpen(false)}>
-                    <AlertTriangle size={15} /> Active Early Warnings
-                  </Link>
-                </li>
-              </ul>
+              {role !== 'REPORTING_OFFICER' && (
+                <ul className="profile-dropdown-links">
+                  <li>
+                    <Link to="/projects" onClick={() => setIsProfileOpen(false)}>
+                      <User size={15} /> Monitored Projects
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/alerts" onClick={() => setIsProfileOpen(false)}>
+                      <AlertTriangle size={15} /> Active Early Warnings
+                    </Link>
+                  </li>
+                </ul>
+              )}
               <div className="profile-dropdown-footer">
                 <button type="button" className="logout-btn" onClick={handleLogout}>
                   <LogOut size={15} /> Sign Out of Workspace

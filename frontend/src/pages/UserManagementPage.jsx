@@ -63,6 +63,27 @@ export default function UserManagementPage() {
     const code = ag.agencyCode || ag.code || 'AGY';
     const randNum = Math.floor(100 + Math.random() * 900);
 
+    if (role === 'SUPER_ADMIN') {
+      return {
+        designation: 'Principal Secretary / Super Administrator',
+        department: 'Cabinet Secretariat / Central Project Monitoring Cell',
+        employeeId: `NIVARA-SA-${randNum}`
+      };
+    }
+    if (role === 'IPMD_ADMIN') {
+      return {
+        designation: 'Director & IPMD Administrator',
+        department: 'Infrastructure Project Monitoring Division',
+        employeeId: `IPMD-DIR-${randNum}`
+      };
+    }
+    if (role === 'MINISTRY_OFFICER' || role === 'MINISTRY_ADMIN') {
+      return {
+        designation: 'Joint Secretary / Ministry Officer',
+        department: 'Infrastructure Planning & Project Directorate',
+        employeeId: `MIN-${randNum}`
+      };
+    }
     if (role === 'NODAL_OFFICER') {
       return {
         designation: `Project Director / Nodal Officer (${code})`,
@@ -385,8 +406,8 @@ export default function UserManagementPage() {
                     {filteredUsers.map((u) => {
                       const userId = u._id || u.id;
                       const isActive = u.isActive !== false;
-                      const ministryName = u.ministry?.name || (typeof u.ministry === 'string' ? u.ministry : null);
-                      const agencyName = u.agency?.name || (typeof u.agency === 'string' ? u.agency : null);
+                      const ministryName = u.ministry?.name || u.ministryId?.name || (typeof u.ministry === 'string' ? u.ministry : null);
+                      const agencyName = u.agency?.name || u.agencyId?.name || (typeof u.agency === 'string' ? u.agency : null);
 
                       return (
                         <tr key={userId} className="hover:bg-slate-50/80 transition-colors">

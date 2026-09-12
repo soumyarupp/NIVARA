@@ -8,6 +8,7 @@ import Footer from '../components/Footer';
 import projectApi from '../api/projectApi';
 import dashboardApi from '../api/dashboardApi';
 import ReportsView from '../components/ReportsView';
+import { useAuth } from '../context/AuthContext';
 import { 
   Search, 
   Filter, 
@@ -24,10 +25,12 @@ import {
   Clock, 
   Layers, 
   RefreshCw,
-  FileText
+  FileText,
+  UploadCloud
 } from 'lucide-react';
 
 const ProjectsPage = () => {
+  const { isReportingOfficer } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -187,14 +190,24 @@ const ProjectsPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-xs inline-flex items-center gap-2 cursor-pointer"
-                onClick={() => setActiveModal('reports')}
-              >
-                <TrendingUp size={14} />
-                <span>AI Predictive Reports &rarr;</span>
-              </button>
+              {isReportingOfficer ? (
+                <Link
+                  to="/submit-report"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-xs inline-flex items-center gap-2"
+                >
+                  <UploadCloud size={14} />
+                  <span>+ Submit Monthly Report</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-xs inline-flex items-center gap-2 cursor-pointer"
+                  onClick={() => setActiveModal('reports')}
+                >
+                  <TrendingUp size={14} />
+                  <span>AI Predictive Reports &rarr;</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -326,13 +339,21 @@ const ProjectsPage = () => {
                       const agency = p.implementationAgencyId?.agencyCode || p.implementationAgencyId?.name || p.agency || 'Central Agency';
                       const ministry = p.ministryId?.name || p.ministry || 'Line Ministry';
                       const state = p.state || 'National';
-                      const risk = (p.riskLevel || 'LOW').toUpperCase();
-                      const delay = p.delayDays !== undefined ? p.delayDays : 0;
                       const origCost = p.originalProjectCost || p.sanctionedCost || p.budgetEstimatedInCrores || 0;
                       const revCost = p.revisedProjectCost || origCost;
                       const spend = p.expenditure || p.totalActualExpenditure || 0;
                       const phy = Math.round(p.physicalProgress ?? 0);
                       const fin = Math.round(p.financialProgress ?? 0);
+                      const isCompleted = phy >= 100 || p.projectStatus === 'COMPLETED' || p.status === 'COMPLETED';
+                      const risk = isCompleted ? 'LOW' : (p.riskLevel || 'LOW').toUpperCase();
+                      const delay = isCompleted ? 0 : (p.delayDays !== undefined ? p.delayDays : 0);
+                      const rawDelay = Number(p.rawDelayDays || p.historicalDelayDays || p.delayDays || 0);
+                      const costRatio = origCost > 0 ? (revCost - origCost) / origCost : 0;
+                      const pastRisk = p.historicalRiskLevel || p.pastRiskLevel || (
+                        rawDelay >= 365 || costRatio >= 0.25 || (p.rawRiskLevel === 'CRITICAL') ? 'CRITICAL' :
+                        rawDelay >= 90 || costRatio >= 0.10 || (p.rawRiskLevel === 'HIGH') ? 'HIGH' :
+                        rawDelay > 0 || costRatio > 0 ? 'MEDIUM' : 'LOW'
+                      );
 
                       return (
                         <tr key={p._id || p.id || index} className="hover:bg-slate-50/90 transition-colors">
@@ -347,6 +368,9 @@ const ProjectsPage = () => {
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-[11px] font-mono text-slate-400 font-semibold">{code}</span>
                               <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">{p.sector || 'Highways'}</span>
+                              {isCompleted && (
+                                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">Completed</span>
+                              )}
                             </div>
                           </td>
                           <td className="py-4 px-4.5">
@@ -372,17 +396,32 @@ const ProjectsPage = () => {
                             </div>
                           </td>
                           <td className="py-4 px-4.5">
-                            <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border inline-block ${
-                              risk === 'CRITICAL' ? 'bg-red-50 text-red-700 border-red-200' :
-                              risk === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                              risk === 'LOW' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                              'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}>
-                              {risk}
-                            </span>
+                            {isCompleted ? (
+                              <div className="space-y-0.5">
+                                <span className="text-[11px] font-extrabold px-3 py-0.5 rounded-full border inline-block bg-emerald-50 text-emerald-700 border-emerald-200">
+                                  COMPLETED
+                                </span>
+                                {pastRisk !== 'LOW' && (
+                                  <span className="text-[10px] text-amber-700 font-bold block">
+                                    Past: {pastRisk} Risk
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full border inline-block ${
+                                risk === 'CRITICAL' ? 'bg-red-50 text-red-700 border-red-200' :
+                                risk === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                risk === 'LOW' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}>
+                                {risk}
+                              </span>
+                            )}
                           </td>
                           <td className="py-4 px-4.5">
-                            {delay > 0 ? (
+                            {isCompleted ? (
+                              <span className="font-bold text-emerald-600">Completed</span>
+                            ) : delay > 0 ? (
                               <span className="font-extrabold text-red-600">+{delay} days</span>
                             ) : (
                               <span className="font-bold text-emerald-600">On Time</span>
@@ -529,14 +568,29 @@ const ProjectsPage = () => {
                   <span className="bg-sky-100 text-sky-800 text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-md">
                     {currentInspect?.projectCode || currentInspect?.id || 'PRJ-CODE'}
                   </span>
-                  <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                    (currentInspect?.riskLevel || 'LOW').toUpperCase() === 'CRITICAL' ? 'bg-red-50 text-red-700 border-red-200' :
-                    (currentInspect?.riskLevel || 'LOW').toUpperCase() === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                    (currentInspect?.riskLevel || 'LOW').toUpperCase() === 'LOW' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                    'bg-amber-50 text-amber-700 border-amber-200'
-                  }`}>
-                    {currentInspect?.riskLevel || 'LOW'} RISK ({currentInspect?.riskScore || 25}/100)
-                  </span>
+                  {((currentInspect?.physicalProgress || 0) >= 100 || currentInspect?.projectStatus === 'COMPLETED' || currentInspect?.status === 'COMPLETED') ? (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+                        COMPLETED (100%)
+                      </span>
+                      {(currentInspect?.historicalRiskLevel || currentInspect?.pastRiskLevel || (
+                        (Number(currentInspect?.delayDays || 0) > 90 || (Number(currentInspect?.revisedProjectCost || 0) > Number(currentInspect?.originalProjectCost || 1) * 1.15)) ? 'HIGH' : null
+                      )) && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-amber-50 text-amber-800 border-amber-200">
+                          Past Risk: {currentInspect?.historicalRiskLevel || currentInspect?.pastRiskLevel || 'HIGH'} (Resolved)
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+                      (currentInspect?.riskLevel || 'LOW').toUpperCase() === 'CRITICAL' ? 'bg-red-50 text-red-700 border-red-200' :
+                      (currentInspect?.riskLevel || 'LOW').toUpperCase() === 'HIGH' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                      (currentInspect?.riskLevel || 'LOW').toUpperCase() === 'LOW' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {currentInspect?.riskLevel || 'LOW'} RISK ({currentInspect?.riskScore || 25}/100)
+                    </span>
+                  )}
                   <span className="text-xs text-slate-500 font-semibold">• {currentInspect?.sector || 'Infrastructure'}</span>
                 </div>
                 <h2 className="text-base sm:text-lg font-extrabold text-slate-900 leading-tight">
@@ -652,10 +706,18 @@ const ProjectsPage = () => {
                           <tbody className="divide-y divide-slate-100 bg-white">
                             {inspectReports.map((r, idx) => {
                               const monthLabel = r.monthName || (
+                                r.reportingMonth === '2026-01' ? 'January 2026' :
+                                r.reportingMonth === '2026-02' ? 'February 2026' :
+                                r.reportingMonth === '2026-03' ? 'March 2026' :
                                 r.reportingMonth === '2026-04' ? 'April 2026' :
                                 r.reportingMonth === '2026-05' ? 'May 2026' :
                                 r.reportingMonth === '2026-06' ? 'June 2026' :
                                 r.reportingMonth === '2026-07' ? 'July 2026' :
+                                r.reportingMonth === '2026-08' ? 'August 2026' :
+                                r.reportingMonth === '2026-09' ? 'September 2026' :
+                                r.reportingMonth === '2026-10' ? 'October 2026' :
+                                r.reportingMonth === '2026-11' ? 'November 2026' :
+                                r.reportingMonth === '2026-12' ? 'December 2026' :
                                 r.reportingMonth
                               );
                               const phy = r.actualPhysicalProgress ?? 0;

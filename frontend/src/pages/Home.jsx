@@ -8,14 +8,14 @@ import dashboardApi from '../api/dashboardApi';
 const Home = () => {
   const navigate = useNavigate();
   const [overview, setOverview] = useState({
-    lastUpdated: "Live Telemetry Active",
+    lastUpdated: "Connecting to Live Telemetry...",
     summary: {
-      totalMonitoredOutlay: "₹48.2 Lakh Crore",
-      projectsAtRisk: "44 Projects"
+      totalMonitoredOutlay: "Loading...",
+      projectsAtRisk: "Loading..."
     },
-    totalProjects: 186,
-    highRiskProjects: 44,
-    criticalAlerts: 18
+    totalProjects: 0,
+    highRiskProjects: 0,
+    criticalAlerts: 0
   });
 
   useEffect(() => {
@@ -31,19 +31,19 @@ const Home = () => {
 
           const formattedOutlay = data.summary?.totalMonitoredOutlay || (
             totalCost >= 100000 
-              ? `₹${(totalCost / 100000).toFixed(1)} Lakh Crore` 
-              : totalCost > 0 ? `₹${Math.round(totalCost).toLocaleString('en-IN')} Cr` : '₹48.2 Lakh Crore'
+              ? `₹${(totalCost / 100000).toFixed(2)} Lakh Crore` 
+              : totalCost > 0 ? `₹${Math.round(totalCost).toLocaleString('en-IN')} Cr` : '₹0 Cr'
           );
 
           setOverview({
             lastUpdated: data.lastUpdated || `${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}, ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST`,
             summary: {
               totalMonitoredOutlay: formattedOutlay,
-              projectsAtRisk: `${highRisk || 44} Projects`
+              projectsAtRisk: `${highRisk} Projects`
             },
-            totalProjects: totalProjects || 186,
-            highRiskProjects: highRisk || 44,
-            criticalAlerts: criticalAlerts || 18
+            totalProjects: totalProjects,
+            highRiskProjects: highRisk,
+            criticalAlerts: criticalAlerts
           });
         }
       } catch (err) {

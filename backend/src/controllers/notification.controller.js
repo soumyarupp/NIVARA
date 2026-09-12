@@ -4,7 +4,11 @@ import { sendSuccess, sendError } from '../utils/response.js';
 export async function getUserNotifications(req, res) {
   try {
     const userId = req.user ? req.user._id || req.user.id : null;
-    const query = userId ? { userId } : {};
+    if (!userId) {
+      return sendSuccess(res, 'Notifications retrieved.', { notifications: [], unreadCount: 0 });
+    }
+
+    const query = { userId };
 
     const notifications = await Notification.find(query)
       .populate('projectId', 'projectName projectCode')
@@ -12,7 +16,7 @@ export async function getUserNotifications(req, res) {
       .sort({ createdAt: -1 })
       .limit(50);
 
-    const unreadCount = userId ? await Notification.countDocuments({ userId, isRead: false }) : 0;
+    const unreadCount = await Notification.countDocuments({ ...query, isRead: false });
 
     return sendSuccess(res, 'Notifications retrieved.', {
       notifications,

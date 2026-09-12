@@ -4,6 +4,7 @@
  */
 
 import { Project } from '../models/Project.js';
+import { getProjectAiAnalysis } from './ai.service.js';
 
 export async function simulateProjectDelay(projectId, { additionalDelayMonths = 0, costEscalationRate = 1.5 }) {
   const project = await Project.findById(projectId);
@@ -27,6 +28,19 @@ export async function simulateProjectDelay(projectId, { additionalDelayMonths = 
   const estimatedAdditionalCost = Math.round(currentEstCost * escalationFactor * 100) / 100;
   const newEstimatedCost = Math.round((currentEstCost + estimatedAdditionalCost) * 100) / 100;
 
+  // Compute live simulated CatBoost AI Risk Prediction
+  const simulatedProject = {
+    ...project.toObject(),
+    revisedCost: newEstimatedCost,
+    revisedProjectCost: newEstimatedCost,
+    delayMonths: (project.delayMonths || 0) + months
+  };
+
+  let simulatedAiRisk = null;
+  try {
+    simulatedAiRisk = await getProjectAiAnalysis(simulatedProject);
+  } catch (_) {}
+
   return {
     projectId: project._id,
     projectName: project.projectName,
@@ -40,6 +54,7 @@ export async function simulateProjectDelay(projectId, { additionalDelayMonths = 
     estimatedAdditionalCost,
     newEstimatedCost,
     simulatedCostIncreasePercent:
-      currentEstCost > 0 ? Math.round((estimatedAdditionalCost / currentEstCost) * 10000) / 100 : 0
+      currentEstCost > 0 ? Math.round((estimatedAdditionalCost / currentEstCost) * 10000) / 100 : 0,
+    simulatedAiRisk
   };
 }

@@ -102,18 +102,32 @@ export default function AnalyticsPage() {
       const total = delayReasons.reduce((acc, r) => acc + (r.count || 1), 0) || 1;
       return delayReasons.slice(0, 5).map(r => {
         const pct = Math.round((r.count / total) * 100);
-        const name = r._id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-        return { name, value: pct || 20 };
+        const name = r._id ? r._id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) : 'Execution Variance';
+        return { name, value: pct };
       });
     }
-    return [
-      { name: 'Land Acquisition & Right of Way', value: 38 },
-      { name: 'Forest & Environmental Clearances', value: 24 },
-      { name: 'Utility Shifting (Power/Water)', value: 16 },
-      { name: 'Contractor Financial Liquidity', value: 12 },
-      { name: 'Monsoon & Geological Surprises', value: 10 },
-    ];
-  }, [delayReasons]);
+
+    const counts = {};
+    projects.forEach(p => {
+      (p.monthlyReports || []).forEach(r => {
+        const reason = r.autoDetectedDelayReason || r.delayReason;
+        if (reason && reason !== 'NONE') {
+          counts[reason] = (counts[reason] || 0) + 1;
+        }
+      });
+    });
+
+    const entries = Object.entries(counts);
+    if (entries.length > 0) {
+      const total = entries.reduce((acc, [, c]) => acc + c, 0) || 1;
+      return entries.slice(0, 5).map(([name, count]) => ({
+        name: name.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()),
+        value: Math.round((count / total) * 100)
+      }));
+    }
+
+    return [];
+  }, [delayReasons, projects]);
 
   return (
     <div className={`admin-app-wrapper ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>

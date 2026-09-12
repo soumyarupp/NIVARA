@@ -102,6 +102,10 @@ const monthlyReportSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    aiAnalysis: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    },
     submittedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -121,6 +125,7 @@ const monthlyReportSchema = new mongoose.Schema(
     ]
   },
   {
+    strict: false,
     timestamps: true
   }
 );

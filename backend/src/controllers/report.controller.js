@@ -5,10 +5,12 @@ import { Clearance } from '../models/Clearance.js';
 import { LandDetail } from '../models/LandDetail.js';
 import { Alert } from '../models/Alert.js';
 import { Notification } from '../models/Notification.js';
+import { User } from '../models/User.js';
 import { calculateFinancialProgress, calculateProgressGap } from '../utils/calculations.js';
 import { classifyDelayReason } from '../services/delayClassifier.js';
 import { detectProgressMismatch } from '../services/mismatchDetector.js';
 import { calculateProjectRisk } from '../services/riskEngine.js';
+import { getProjectAiAnalysis } from '../services/ai.service.js';
 import { sendAlertNotificationEmail } from '../services/email.service.js';
 import { logAuditEvent } from '../services/audit.service.js';
 import { dispatchProjectAlert } from '../services/alertDispatch.service.js';
@@ -53,6 +55,15 @@ export async function submitMonthlyReport(req, res) {
       }
     }
 
+    // Guard: Completed projects cannot receive further reports
+    if (
+      project.status === 'COMPLETED' || 
+      project.projectStatus === 'COMPLETED' || 
+      (project.physicalProgress && Number(project.physicalProgress?.overallPercentage ?? project.physicalProgress) >= 100)
+    ) {
+      return sendError(res, 'This project is already marked as COMPLETED (100% Progress). No further monthly reports can be submitted.', [], 400);
+    }
+
     // 1. Calculate Financial Progress
     const actualFinancialProgress = calculateFinancialProgress(expenditure, project.originalProjectCost);
     const plannedFinProg = req.body.plannedFinancialProgress !== undefined
@@ -73,7 +84,7 @@ export async function submitMonthlyReport(req, res) {
     const landDetail = await LandDetail.findOne({ projectId: project._id });
     const remainingLandPercentage = landDetail ? landDetail.remainingLandPercentage || 0 : 0;
 
-    // 5. Evaluate Multi-Factor Risk Score
+    // 5. Evaluate Multi-Factor Risk Score (Rule-Based)
     const riskResult = calculateProjectRisk({
       project,
       financialProgress: actualFinancialProgress,
@@ -84,7 +95,48 @@ export async function submitMonthlyReport(req, res) {
       remainingLandPercentage
     });
 
-    // 6. Save or Upsert Monthly Report
+    // 6. Run Instant AI Risk Model Prediction (CatBoost ML + Isolation Forest + NLP)
+    const delayDaysNum = Number(delayDays) || 0;
+    const delayMonthsNum = Math.max(0, Math.round(delayDaysNum / 30));
+
+    let aiAnalysis = null;
+    try {
+      aiAnalysis = await getProjectAiAnalysis({
+        ...project.toObject(),
+        expenditure,
+        physicalProgress: actualPhysicalProgress,
+        delayDays: delayDaysNum,
+        delayMonths: delayMonthsNum,
+        actualFinancialProgress,
+        actualPhysicalProgress
+      });
+    } catch (aiErr) {
+      console.warn('[AI Evaluation Error in submitMonthlyReport]:', aiErr.message);
+    }
+
+    // Determine final risk score & level combining multi-factor rule engine and AI model
+    const isCompleted = actualPhysicalProgress >= 100;
+
+    let finalRiskScore = isCompleted ? 0 : riskResult.riskScore;
+    if (!isCompleted && aiAnalysis && aiAnalysis.risk?.['3_month']?.probability !== undefined) {
+      const aiScore = Math.round(aiAnalysis.risk['3_month'].probability * 100);
+      finalRiskScore = Math.round(riskResult.riskScore * 0.4 + aiScore * 0.6);
+    }
+
+    let finalRiskLevel = 'LOW';
+    if (isCompleted) {
+      finalRiskLevel = 'LOW';
+    } else if (finalRiskScore >= 75) {
+      finalRiskLevel = 'CRITICAL';
+    } else if (finalRiskScore >= 50) {
+      finalRiskLevel = 'HIGH';
+    } else if (finalRiskScore >= 25) {
+      finalRiskLevel = 'MEDIUM';
+    } else {
+      finalRiskLevel = 'LOW';
+    }
+
+    // 7. Save or Upsert Monthly Report with AI analysis & risk assessment
     const reportData = {
       projectId,
       reportingMonth,
@@ -93,16 +145,17 @@ export async function submitMonthlyReport(req, res) {
       plannedPhysicalProgress: plannedPhysicalProgress || 0,
       actualPhysicalProgress,
       expenditure,
-      delayDays: Number(delayDays) || 0,
-      delayReasonText,
-      autoDetectedDelayReason: nlpClassification.category,
+      delayDays: isCompleted ? 0 : delayDaysNum,
+      delayReasonText: isCompleted ? 'Project execution fully completed and commissioned.' : delayReasonText,
+      autoDetectedDelayReason: isCompleted ? 'NONE' : nlpClassification.category,
       delayConfidence: nlpClassification.confidence,
       matchedKeywords: nlpClassification.matchedKeywords,
-      mismatchDetected: mismatch.mismatch,
-      mismatchDifference: mismatch.difference,
-      mismatchSeverity: mismatch.severity,
-      calculatedRiskScore: riskResult.riskScore,
-      calculatedRiskLevel: riskResult.riskLevel,
+      mismatchDetected: isCompleted ? false : mismatch.mismatch,
+      mismatchDifference: isCompleted ? 0 : mismatch.difference,
+      mismatchSeverity: isCompleted ? 'LOW' : mismatch.severity,
+      calculatedRiskScore: finalRiskScore,
+      calculatedRiskLevel: finalRiskLevel,
+      aiAnalysis: aiAnalysis || null,
       remarks,
       submittedBy: userId,
       submittedAt: new Date(),
@@ -115,19 +168,67 @@ export async function submitMonthlyReport(req, res) {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    // 7. Update Master Project Cached Metrics
+    // 8. Update Master Project Cached Metrics and Store AI Prediction in DB
     project.financialProgress = actualFinancialProgress;
     project.physicalProgress = actualPhysicalProgress;
     project.plannedPhysicalProgress = plannedPhysicalProgress || project.plannedPhysicalProgress;
     project.plannedFinancialProgress = plannedFinProg;
     project.expenditure = expenditure;
     project.totalActualExpenditure = expenditure;
-    project.riskScore = riskResult.riskScore;
-    project.riskLevel = riskResult.riskLevel;
+    project.delayDays = isCompleted ? 0 : delayDaysNum;
+    project.delayMonths = isCompleted ? 0 : delayMonthsNum;
+    project.riskScore = finalRiskScore;
+    project.riskLevel = finalRiskLevel;
+    if (isCompleted) {
+      project.status = 'COMPLETED';
+      project.projectStatus = 'COMPLETED';
+    }
+    if (aiAnalysis) {
+      project.aiPrediction = aiAnalysis;
+      project.aiLastEvaluatedAt = new Date();
+    }
     project.latestReportDate = new Date();
+
+    // Update monthlyReports array & reportingMonths
+    const [rptYear, rptMonth] = (reportingMonth || '').split('-').map(Number);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthName = rptMonth && rptMonth >= 1 && rptMonth <= 12 ? `${monthNames[rptMonth - 1]} ${rptYear}` : reportingMonth;
+
+    const monthlyItem = {
+      reportingMonth,
+      year: rptYear || new Date().getFullYear(),
+      month: rptMonth || (new Date().getMonth() + 1),
+      monthName,
+      expenditure,
+      cumulativeExpenditure: expenditure,
+      actualPhysicalProgress,
+      actualFinancialProgress,
+      plannedPhysicalProgress: plannedPhysicalProgress || 0,
+      plannedFinancialProgress: plannedFinProg,
+      delayMonths: delayMonthsNum,
+      delayDays: delayDaysNum,
+      delayReasonText,
+      remarks
+    };
+
+    if (!Array.isArray(project.monthlyReports)) {
+      project.monthlyReports = [];
+    }
+    const existingRptIdx = project.monthlyReports.findIndex(r => r.reportingMonth === reportingMonth);
+    if (existingRptIdx >= 0) {
+      project.monthlyReports[existingRptIdx] = monthlyItem;
+    } else {
+      project.monthlyReports.push(monthlyItem);
+    }
+    project.totalReportsCount = project.monthlyReports.length;
+    if (!project.reportingMonths) project.reportingMonths = [];
+    if (!project.reportingMonths.includes(reportingMonth)) {
+      project.reportingMonths.push(reportingMonth);
+    }
+
     await project.save();
 
-    // 8. Generate Alerts & Dispatch Notifications if needed (Routed to Nodal, Escalated to Agency if High/Critical)
+    // 9. Generate Alerts & Dispatch Notifications if needed (Routed to Nodal, Escalated to Agency if High/Critical)
     const alertsGenerated = [];
 
     // Mismatch Alert
@@ -145,15 +246,15 @@ export async function submitMonthlyReport(req, res) {
           severity: mismatch.severity,
           title: `Fund vs Physical Progress Discrepancy (${mismatch.difference}%)`,
           message: mismatch.message,
-          riskScore: riskResult.riskScore
+          riskScore: finalRiskScore
         });
         alertsGenerated.push(mismatchAlert);
       }
     }
 
     // High / Critical Risk Alert
-    if (['HIGH', 'CRITICAL'].includes(riskResult.riskLevel)) {
-      const alertType = riskResult.riskLevel === 'CRITICAL' ? 'CRITICAL_RISK' : 'HIGH_RISK';
+    if (['HIGH', 'CRITICAL'].includes(finalRiskLevel)) {
+      const alertType = finalRiskLevel === 'CRITICAL' ? 'CRITICAL_RISK' : 'HIGH_RISK';
       const existingRiskAlert = await Alert.findOne({
         projectId: project._id,
         alertType,
@@ -164,13 +265,55 @@ export async function submitMonthlyReport(req, res) {
         const riskAlert = await dispatchProjectAlert({
           project,
           alertType,
-          severity: riskResult.riskLevel,
-          title: `${riskResult.riskLevel} Project Risk (${riskResult.riskScore}/100)`,
-          message: `Project risk escalated to ${riskResult.riskScore}/100 based on physical delay and financial utilization parameters.`,
-          riskScore: riskResult.riskScore
+          severity: finalRiskLevel,
+          title: `${finalRiskLevel} Project Risk (${finalRiskScore}/100)`,
+          message: `Project risk escalated to ${finalRiskScore}/100 based on AI analysis, physical delay, and financial utilization parameters.`,
+          riskScore: finalRiskScore
         });
         alertsGenerated.push(riskAlert);
       }
+    }
+
+    // 10. Direct live telemetry notification for assigned Nodal Officer(s)
+    const nodalUserIds = new Set();
+    if (project.nodalOfficer?._id) nodalUserIds.add(project.nodalOfficer._id.toString());
+    else if (project.nodalOfficer) nodalUserIds.add(project.nodalOfficer.toString());
+    if (project.nodalOfficerId) nodalUserIds.add(project.nodalOfficerId.toString());
+
+    // Also find any Nodal Officer linked to this project or agency
+    try {
+      const assignedNodals = await User.find({
+        role: 'NODAL_OFFICER',
+        $or: [
+          { projectIds: project._id },
+          { agencyId: project.implementationAgencyId },
+          { agencyId: project.implementingAgencyId }
+        ]
+      }).select('_id');
+      assignedNodals.forEach(u => nodalUserIds.add(u._id.toString()));
+
+      // Fallback: if no nodal officer mapped, notify all active Nodal Officers
+      if (nodalUserIds.size === 0) {
+        const allNodals = await User.find({ role: 'NODAL_OFFICER' }).select('_id');
+        allNodals.forEach(u => nodalUserIds.add(u._id.toString()));
+      }
+    } catch (e) {
+      console.warn('Error querying nodal officers:', e.message);
+    }
+
+    const ai3mRisk = aiAnalysis?.risk?.['3_month']?.probability !== undefined
+      ? `${Math.round(aiAnalysis.risk['3_month'].probability * 100)}%`
+      : 'Active';
+
+    for (const nUserId of nodalUserIds) {
+      await Notification.create({
+        userId: nUserId,
+        projectId: project._id,
+        title: `Monthly Progress Report: ${project.projectName || 'Project'}`,
+        message: `${req.user.name || req.user.fullName || 'Reporting Officer'} submitted ${reportingMonth} return: Physical: ${actualPhysicalProgress}%, Cumulative Spend: ₹${expenditure} Cr. Instant AI Risk Assessment: ${finalRiskLevel} (${finalRiskScore}/100, 3M Probability: ${ai3mRisk}).`,
+        type: 'PROGRESS_UPDATE',
+        severity: finalRiskLevel || 'LOW'
+      }).catch(err => console.warn('Nodal notification creation notice:', err.message));
     }
 
     await logAuditEvent({
@@ -183,7 +326,8 @@ export async function submitMonthlyReport(req, res) {
         reportingMonth,
         actualPhysicalProgress,
         actualFinancialProgress,
-        riskScore: riskResult.riskScore
+        riskScore: finalRiskScore,
+        riskLevel: finalRiskLevel
       },
       ipAddress: req.ip
     });
@@ -193,7 +337,12 @@ export async function submitMonthlyReport(req, res) {
       'Monthly progress report submitted and processed successfully.',
       {
         report: monthlyReport,
-        riskAssessment: riskResult,
+        riskAssessment: {
+          riskScore: finalRiskScore,
+          riskLevel: finalRiskLevel,
+          ruleScore: riskResult.riskScore
+        },
+        aiAnalysis,
         delayClassification: nlpClassification,
         mismatchAnalysis: mismatch,
         alertsCreated: alertsGenerated

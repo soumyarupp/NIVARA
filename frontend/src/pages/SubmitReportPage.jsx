@@ -41,10 +41,39 @@ const SubmitReportPage = () => {
   useEffect(() => {
     async function loadProjects() {
       try {
+        const queryTarget = searchParams.get('projectId') || searchParams.get('projectCode') || searchParams.get('id') || '';
         const res = await projectApi.getProjects();
-        const list = res?.projects || res?.data || [];
+        let list = res?.projects || res?.data || [];
+
+        let matched = null;
+        if (queryTarget) {
+          matched = list.find(p => 
+            p._id === queryTarget || 
+            p.id === queryTarget || 
+            (p.projectCode && p.projectCode.toString().toLowerCase() === queryTarget.toLowerCase()) ||
+            (p.projectName && p.projectName.toLowerCase() === queryTarget.toLowerCase())
+          );
+        }
+
+        // If target project not in default list, fetch directly
+        if (queryTarget && !matched) {
+          try {
+            const singleRes = await projectApi.getProjectById(queryTarget);
+            const singleProj = singleRes?.project || singleRes?.data || singleRes;
+            if (singleProj && (singleProj._id || singleProj.projectCode)) {
+              matched = singleProj;
+              list = [singleProj, ...list.filter(p => p._id !== singleProj._id && p.projectCode !== singleProj.projectCode)];
+            }
+          } catch (fetchErr) {
+            console.warn("Could not fetch target project by id:", fetchErr.message);
+          }
+        }
+
         setProjects(list);
-        if (!selectedProjectId && list.length > 0) {
+
+        if (matched) {
+          setSelectedProjectId(matched._id || matched.id);
+        } else if (!selectedProjectId && list.length > 0) {
           setSelectedProjectId(list[0]._id || list[0].id);
         }
       } catch (err) {
@@ -52,7 +81,7 @@ const SubmitReportPage = () => {
       }
     }
     loadProjects();
-  }, [selectedProjectId]);
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadPastReports() {
@@ -90,6 +119,10 @@ const SubmitReportPage = () => {
     e.preventDefault();
     if (!selectedProjectId) {
       setAlertStatus({ message: 'Please select an infrastructure project.', isError: true });
+      return;
+    }
+    if (isCompletedProject) {
+      setAlertStatus({ message: 'This project has already reached 100% completion. Further monthly reports are locked.', isError: true });
       return;
     }
     if (!expenditure || Number(expenditure) < 0) {
@@ -146,11 +179,56 @@ const SubmitReportPage = () => {
     }
   };
 
-  const selectedProjObj = projects.find(p => p._id === selectedProjectId || p.id === selectedProjectId);
+  const handleFillDemoData = async () => {
+    let targetProjectId = selectedProjectId;
+    if (!targetProjectId && projects.length > 0) {
+      targetProjectId = projects[0]._id || projects[0].id;
+      setSelectedProjectId(targetProjectId);
+    }
+
+    const matchedProj = projects.find(p => (p._id || p.id) === targetProjectId) || projects[0];
+    const cost = Number(matchedProj?.originalProjectCost || matchedProj?.sanctionedCost || 1200);
+    const curExp = Number(matchedProj?.expenditure || matchedProj?.totalActualExpenditure || 450);
+    const curPhy = Number(matchedProj?.physicalProgress || 38);
+
+    const demoExp = Math.round((curExp + (cost * 0.03 || 35)) * 10) / 10;
+    const demoPhy = Math.min(96, Math.max(15, Math.round(curPhy + 4)));
+    const demoPlannedPhy = Math.min(100, demoPhy + 6);
+    const demoDelayText = "Stage-II forest diversion clearance awaited from State Forest Department for 14.5 Ha stretch. Tree felling in non-forest zone certified; compensatory afforestation deposit submitted.";
+    const demoRemarks = "Contractor mobilized additional excavators and deployed second shift for bridge superstructure launching girder operations. Weather normalized.";
+
+    setReportingMonth('2026-08');
+    setExpenditure(String(demoExp));
+    setActualPhysicalProgress(String(demoPhy));
+    setPlannedPhysicalProgress(String(demoPlannedPhy));
+    setDelayDays('45');
+    setDelayReasonText(demoDelayText);
+    setRemarks(demoRemarks);
+
+    setIsNlpAnalyzing(true);
+    try {
+      const res = await delayApi.classifyRemark(targetProjectId, demoDelayText);
+      if (res && res.data) {
+        setNlpPrediction(res.data);
+      }
+    } catch (_) {}
+    setIsNlpAnalyzing(false);
+  };
+
+  const selectedProjObj = projects.find(p => 
+    p._id === selectedProjectId || 
+    p.id === selectedProjectId ||
+    (p.projectCode && p.projectCode.toString().toLowerCase() === selectedProjectId?.toString().toLowerCase())
+  );
+  const isCompletedProject = selectedProjObj && (
+    Number(selectedProjObj.physicalProgress || 0) >= 100 ||
+    selectedProjObj.projectStatus === 'COMPLETED' ||
+    selectedProjObj.status === 'COMPLETED'
+  );
   const costTotal = Number(selectedProjObj?.originalProjectCost || selectedProjObj?.sanctionedCost || 0);
   const spentTotal = Number(selectedProjObj?.expenditure || selectedProjObj?.totalActualExpenditure || 0);
   const financialPct = costTotal > 0 ? Math.min(100, Math.round((spentTotal / costTotal) * 100)) : 0;
-  const physicalPct = Number(selectedProjObj?.physicalProgress || 0);
+  const physicalPct = isCompletedProject ? 100 : Number(selectedProjObj?.physicalProgress || 0);
 
   return (
     <div className={`admin-app-wrapper ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -168,18 +246,31 @@ const SubmitReportPage = () => {
             >
               <ArrowLeft size={14} /> Back to Reports Overview
             </Link>
-            <div className="flex items-center gap-2.5 bg-slate-100/80 border border-slate-200/80 px-3.5 py-1.5 rounded-xl">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-xs text-slate-600 font-medium">
-                Authenticated Officer: <strong className="text-slate-900 font-bold">{user?.fullName || user?.name || 'Field Officer'}</strong>
-              </span>
+            
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleFillDemoData}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-800 bg-amber-300 hover:bg-amber-400 border border-amber-400/80 transition shadow-2xs cursor-pointer"
+                title="Fill demo data"
+              >
+                <Sparkles size={14} className="text-amber-950" />
+                <span>Fill Demo Report</span>
+              </button>
+
+              <div className="flex items-center gap-2.5 bg-slate-100/80 border border-slate-200/80 px-3.5 py-1.5 rounded-xl">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="text-xs text-slate-600 font-medium">
+                  Authenticated Officer: <strong className="text-slate-900 font-bold">{user?.fullName || user?.name || 'Field Officer'}</strong>
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Banner Card */}
-          <div className="dashboard-banner bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-7 border border-slate-700/60 shadow-lg shadow-slate-950/10">
-            <div className="flex items-center gap-3.5 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400">
+          <div className="dashboard-banner bg-linear-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-6 border border-slate-700/60 shadow-lg shadow-slate-950/10">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400 shrink-0">
                 <FileText size={22} />
               </div>
               <div>
@@ -254,13 +345,21 @@ const SubmitReportPage = () => {
                         type="month"
                         value={reportingMonth}
                         onChange={(e) => setReportingMonth(e.target.value)}
-                        className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs sm:text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all"
+                        disabled={isCompletedProject}
+                        className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs sm:text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                         required
                       />
                     </div>
                     <p className="text-[11px] text-slate-400">Standard monthly reporting cycle window</p>
                   </div>
                 </div>
+
+                {isCompletedProject && (
+                  <div className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-900 text-xs font-bold flex items-center gap-2.5">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <span>This project has reached 100% completion and is tagged as COMPLETED. Monthly reporting is locked and archived.</span>
+                  </div>
+                )}
               </div>
 
               {/* Section 2: Monthly Execution Metrics */}
@@ -273,6 +372,58 @@ const SubmitReportPage = () => {
                     <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Monthly Execution Metrics</h3>
                   </div>
                   <span className="text-[11px] font-bold text-slate-400">Quantifiable Progress</span>
+                </div>
+
+                {/* Live Context Card: How much monthly used & current progress */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 via-sky-50/40 to-emerald-50/30 border border-slate-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                      <TrendingUp size={14} className="text-sky-600" />
+                      Current Baseline &amp; Cumulative Telemetry Recorded
+                    </span>
+                    <span className="text-[10px] font-bold bg-white text-slate-700 px-2.5 py-0.5 rounded-full border border-slate-200 shadow-2xs">
+                      {pastReports.length} Historical Cycles Logged
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Sanctioned Outlay</span>
+                      <strong className="text-slate-900 text-sm font-extrabold mt-0.5 block">₹{costTotal.toLocaleString('en-IN')} Cr</strong>
+                      <span className="text-[10px] text-slate-400 font-medium">Approved Budget</span>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Cumulative Used</span>
+                      <strong className="text-emerald-700 text-sm font-extrabold mt-0.5 block">₹{spentTotal.toLocaleString('en-IN')} Cr</strong>
+                      <span className="text-[10px] text-emerald-700 font-bold">{financialPct}% Funds Utilized</span>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Current Progress</span>
+                      <strong className="text-sky-700 text-sm font-extrabold mt-0.5 block">{physicalPct}%</strong>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                        <div className="bg-sky-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, physicalPct)}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Remaining Outlay</span>
+                      <strong className="text-slate-900 text-sm font-extrabold mt-0.5 block">₹{Math.max(0, costTotal - spentTotal).toFixed(2)} Cr</strong>
+                      <span className="text-[10px] text-slate-400 font-medium">{(100 - financialPct).toFixed(1)}% Available</span>
+                    </div>
+                  </div>
+
+                  {pastReports.length > 0 && (
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 flex-wrap gap-2">
+                      <span>
+                        Last Reported Cycle: <strong className="text-slate-800 font-bold">{pastReports[0]?.reportingMonth}</strong> &bull; Outlay: <strong className="text-emerald-700 font-bold">₹{pastReports[0]?.expenditure} Cr</strong> &bull; Physical: <strong className="text-sky-700 font-bold">{pastReports[0]?.actualPhysicalProgress}%</strong>
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {pastReports[0]?.delayDays > 0 ? `+${pastReports[0].delayDays} days delay` : 'On Schedule'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -292,7 +443,10 @@ const SubmitReportPage = () => {
                         required
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400">Total invoice outlay certified this cycle</p>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Certified outlay this cycle</span>
+                      <span className="font-semibold text-slate-600">Used so far: ₹{spentTotal} Cr</span>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
@@ -313,7 +467,10 @@ const SubmitReportPage = () => {
                       />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
                     </div>
-                    <p className="text-[11px] text-slate-400">Cumulative physical milestone completion</p>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Cumulative physical milestone</span>
+                      <span className="font-semibold text-slate-600">Last recorded: {physicalPct}%</span>
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
@@ -522,10 +679,24 @@ const SubmitReportPage = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs sm:text-sm font-bold px-7 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50 cursor-pointer"
+                  disabled={isSubmitting || isCompletedProject}
+                  className={`inline-flex items-center gap-2 text-white text-xs sm:text-sm font-bold px-7 py-2.5 rounded-xl shadow-md transition-all ${
+                    isCompletedProject 
+                      ? 'bg-slate-400 cursor-not-allowed opacity-60' 
+                      : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 hover:shadow-lg cursor-pointer'
+                  }`}
                 >
-                  <Send size={16} /> {isSubmitting ? 'Transmitting Report...' : 'Transmit Monthly Report'}
+                  {isCompletedProject ? (
+                    <>
+                      <CheckCircle2 size={16} />
+                      <span>Project Completed (Submissions Locked)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      <span>{isSubmitting ? 'Transmitting Report...' : 'Transmit Monthly Report'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

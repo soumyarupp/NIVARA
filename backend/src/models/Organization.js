@@ -51,6 +51,23 @@ const organizationSchema = new mongoose.Schema(
       default: 'ACTIVE',
       index: true
     },
+    totalSanctionedCapital: {
+      type: Number,
+      default: 0,
+      index: true
+    },
+    totalProjectsCount: {
+      type: Number,
+      default: 0
+    },
+    totalExpenditure: {
+      type: Number,
+      default: 0
+    },
+    lastCapitalRecalculatedAt: {
+      type: Date,
+      default: Date.now
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

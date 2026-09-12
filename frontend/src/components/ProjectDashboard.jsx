@@ -81,57 +81,42 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
     });
   }, [projects, searchQuery, sectorFilter]);
 
-  // Dynamic KPI Metric Calculations
-  const totalProjectsCount = projects.length || overview?.totalProjects || 186;
-  const totalCostVal = projects.reduce((acc, p) => acc + Number(p.originalProjectCost || p.sanctionedCost || p.budgetEstimatedInCrores || 0), 0) || overview?.totalCost || 4820000;
-  const totalOutlayDisplay = totalCostVal >= 100000 
-    ? `₹${(totalCostVal / 100000).toFixed(1)} L Cr` 
-    : `₹${Math.round(totalCostVal).toLocaleString('en-IN')} Cr`;
+  // Dynamic KPI Metric Calculations using real database aggregations from overview
+  const totalProjectsCount = overview?.totalProjects ?? projects.length ?? 0;
+  const totalCostVal = overview?.totalCost ?? projects.reduce((acc, p) => acc + Number(p.originalProjectCost || p.sanctionedCost || p.budgetEstimatedInCrores || 0), 0);
+  const totalOutlayDisplay = overview?.summary?.totalMonitoredOutlay || (
+    totalCostVal >= 100000 
+      ? `₹${(totalCostVal / 100000).toFixed(2)} Lakh Cr` 
+      : `₹${Math.round(totalCostVal).toLocaleString('en-IN')} Cr`
+  );
 
-  const criticalProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'CRITICAL' || p.riskScore >= 75);
-  const highProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'HIGH' || (p.riskScore >= 50 && p.riskScore < 75));
-  const mediumProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'MEDIUM' || (p.riskScore >= 25 && p.riskScore < 50));
-  const lowProjects = projects.filter(p => (p.riskLevel || '').toUpperCase() === 'LOW' || (!p.riskLevel && (p.riskScore || 0) < 25));
+  const criticalCount = overview?.riskDistribution?.CRITICAL ?? projects.filter(p => (p.riskLevel || '').toUpperCase() === 'CRITICAL').length;
+  const highCount = overview?.riskDistribution?.HIGH ?? projects.filter(p => (p.riskLevel || '').toUpperCase() === 'HIGH').length;
+  const mediumCount = overview?.riskDistribution?.MEDIUM ?? projects.filter(p => (p.riskLevel || '').toUpperCase() === 'MEDIUM').length;
+  const lowCount = overview?.riskDistribution?.LOW ?? projects.filter(p => (p.riskLevel || '').toUpperCase() === 'LOW' || !p.riskLevel).length;
 
-  const totalAtRiskCount = (criticalProjects.length + highProjects.length) || overview?.highRiskProjects || 44;
-  const atRiskPct = totalProjectsCount > 0 ? ((totalAtRiskCount / totalProjectsCount) * 100).toFixed(1) : '23.7';
+  const totalAtRiskCount = overview?.highRiskProjects ?? (criticalCount + highCount);
+  const atRiskPct = totalProjectsCount > 0 ? ((totalAtRiskCount / totalProjectsCount) * 100).toFixed(1) : '0.0';
 
-  const avgDelayVal = projects.length > 0 
-    ? (projects.reduce((acc, p) => acc + (Number(p.delayMonths) || (Number(p.delayDays) ? Number(p.delayDays) / 30 : 0) || 0), 0) / projects.length).toFixed(1)
-    : (overview?.avgPredictedDelayMonths || 11.3);
+  const avgDelayVal = overview?.avgPredictedDelayMonths !== undefined 
+    ? Number(overview.avgPredictedDelayMonths).toFixed(1) 
+    : (projects.length > 0 
+        ? (projects.reduce((acc, p) => acc + (Number(p.delayMonths) || (Number(p.delayDays) ? Number(p.delayDays) / 30 : 0) || 0), 0) / projects.length).toFixed(1)
+        : '0.0');
 
-  // Dynamic Risk Score Distribution
+  // Dynamic Risk Score Distribution without category overlaps
   const riskData = useMemo(() => {
-    if (projects.length > 0) {
-      return [
-        { name: 'Critical Risk', value: criticalProjects.length, color: '#ef4444' },
-        { name: 'High Risk', value: highProjects.length, color: '#f97316' },
-        { name: 'Medium Risk', value: mediumProjects.length, color: '#eab308' },
-        { name: 'Low Risk', value: lowProjects.length, color: '#10b981' },
-      ];
-    }
     return [
-      { name: 'Critical Risk', value: overview?.criticalAlerts || 18, color: '#ef4444' },
-      { name: 'High Risk', value: 26, color: '#f97316' },
-      { name: 'Medium Risk', value: 44, color: '#eab308' },
-      { name: 'Low Risk', value: 98, color: '#10b981' },
+      { name: 'Critical Risk', value: criticalCount, color: '#ef4444' },
+      { name: 'High Risk', value: highCount, color: '#f97316' },
+      { name: 'Medium Risk', value: mediumCount, color: '#eab308' },
+      { name: 'Low Risk', value: lowCount, color: '#10b981' },
     ];
-  }, [projects, criticalProjects.length, highProjects.length, mediumProjects.length, lowProjects.length, overview]);
+  }, [criticalCount, highCount, mediumCount, lowCount]);
 
   // Dynamic Sector Breakdown
   const sectorData = useMemo(() => {
-    if (projects.length === 0) {
-      return [
-        { name: 'Roads', predicted: 4.8, reported: 3.2 },
-        { name: 'Railways', predicted: 7.5, reported: 4.1 },
-        { name: 'Power', predicted: 3.2, reported: 2.1 },
-        { name: 'Petroleum', predicted: 2.1, reported: 1.5 },
-        { name: 'Water', predicted: 6.2, reported: 3.8 },
-        { name: 'Coal', predicted: 5.5, reported: 3.2 },
-        { name: 'Steel', predicted: 3.8, reported: 2.9 },
-        { name: 'Ports', predicted: 4.2, reported: 3.0 },
-      ];
-    }
+    if (projects.length === 0) return [];
 
     const map = {};
     projects.forEach(p => {
@@ -149,41 +134,60 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
       const reportedOverrun = Math.round((stats.totalSpend / (stats.totalCost || 1)) * 1000) / 10;
       return {
         name: shortName,
-        predicted: Math.max(1.5, Math.min(25, predictedOverrun)),
-        reported: Math.max(1.0, Math.min(20, Math.round(reportedOverrun * 0.1 * 10) / 10 || 3.2))
+        predicted: Math.max(0, predictedOverrun),
+        reported: Math.max(0, Math.round(reportedOverrun * 0.1 * 10) / 10)
       };
     });
   }, [projects]);
 
-  // Dynamic Cost Evolution
+  // Dynamic Cost Evolution matching 3-month cycle
   const costEvolutionData = useMemo(() => {
     if (overview?.costEvolution && Array.isArray(overview.costEvolution) && overview.costEvolution.length > 0) {
-      const totalOrigLakhCr = Math.round(totalCostVal / 100000 * 10) / 10;
-      const totalRevLakhCr = Math.round((overview.revisedCost || totalCostVal * 1.1) / 100000 * 10) / 10;
       return overview.costEvolution.map((m) => {
-        const monthLabel = m._id === '2026-04' ? 'Apr' :
-          m._id === '2026-05' ? 'May' :
-          m._id === '2026-06' ? 'Jun' :
-          m._id === '2026-07' ? 'Jul' : m._id;
-        const spendLakhCr = Math.round((m.expenditure || 1000) / 100000 * 10) / 10;
+        const monthLabel = m.name || (
+          m._id === '2026-01' ? 'Jan 2026' :
+          m._id === '2026-02' ? 'Feb 2026' :
+          m._id === '2026-03' ? 'Mar 2026' : m._id
+        );
         return {
           name: monthLabel,
-          expenditure: spendLakhCr > 0 ? spendLakhCr : 18.5,
-          original: totalOrigLakhCr || 31.0,
-          revised: totalRevLakhCr || 35.5
+          expenditure: m.expenditure,
+          original: m.original,
+          revised: m.revised
         };
       });
     }
 
-    return [
-      { name: 'Nov', expenditure: 10.2, original: 30.0, revised: 32.4 },
-      { name: 'Dec', expenditure: 15.4, original: 31.0, revised: 34.1 },
-      { name: 'Jan', expenditure: 18.8, original: 31.0, revised: 35.6 },
-      { name: 'Feb', expenditure: 20.5, original: 31.0, revised: 36.8 },
-      { name: 'Mar', expenditure: 22.9, original: 31.0, revised: 37.9 },
-      { name: 'Apr', expenditure: 25.4, original: 31.0, revised: 38.2 },
-    ];
-  }, [overview, totalCostVal]);
+    // Derive from projects monthly progression if overview costEvolution is not populated
+    const monthAgg = {};
+    projects.forEach(p => {
+      (p.monthlyReports || []).forEach(r => {
+        const m = r.reportingMonth;
+        if (m) {
+          if (!monthAgg[m]) monthAgg[m] = 0;
+          monthAgg[m] += Number(r.expenditure || 0);
+        }
+      });
+    });
+
+    const months = Object.keys(monthAgg).sort();
+    if (months.length > 0) {
+      const totalOrigLakhCr = Math.round(totalCostVal / 100000 * 100) / 100;
+      return months.map(mKey => {
+        const [y, mNum] = mKey.split('-');
+        const monthNames = ['Jan 2026', 'Feb 2026', 'Mar 2026', 'Apr 2026', 'May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026', 'Sep 2026', 'Oct 2026', 'Nov 2026', 'Dec 2026'];
+        const name = monthNames[parseInt(mNum, 10) - 1] || mKey;
+        return {
+          name,
+          expenditure: Math.round(monthAgg[mKey] / 100000 * 100) / 100,
+          original: totalOrigLakhCr,
+          revised: Math.round(totalOrigLakhCr * 1.05 * 100) / 100
+        };
+      });
+    }
+
+    return [];
+  }, [overview?.costEvolution, totalCostVal, projects]);
 
   // Dynamic Escalation Drivers
   const escalationDrivers = useMemo(() => {
@@ -192,30 +196,42 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
       const colors = ['#0284c7', '#6366f1', '#0d9488', '#f59e0b', '#ec4899', '#8b5cf6'];
       return delayReasons.slice(0, 5).map((r, i) => {
         const pct = Math.round((r.count / total) * 100);
-        const name = r._id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+        const name = r._id ? r._id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) : 'Execution Variance';
         return {
           name,
-          value: pct || 20,
+          value: pct,
           color: colors[i % colors.length]
         };
       });
     }
-    return [
-      { name: 'Land Acquisition Delays', value: 28, color: '#0284c7' },
-      { name: 'Statutory & Environmental Clearances', value: 24, color: '#6366f1' },
-      { name: 'Contractor Performance & Mobilization', value: 20, color: '#0d9488' },
-      { name: 'Funding Constraints & Allocation Gaps', value: 15, color: '#f59e0b' },
-      { name: 'Material & Equipment Price Escalation', value: 13, color: '#ec4899' },
-    ];
-  }, [delayReasons]);
+
+    // Derive from projects
+    const reasonCounts = {};
+    projects.forEach(p => {
+      (p.monthlyReports || []).forEach(r => {
+        const re = r.autoDetectedDelayReason || r.delayReason;
+        if (re && re !== 'NONE') {
+          reasonCounts[re] = (reasonCounts[re] || 0) + 1;
+        }
+      });
+    });
+
+    const entries = Object.entries(reasonCounts);
+    if (entries.length > 0) {
+      const total = entries.reduce((acc, [, c]) => acc + c, 0) || 1;
+      const colors = ['#0284c7', '#6366f1', '#0d9488', '#f59e0b', '#ec4899', '#8b5cf6'];
+      return entries.slice(0, 5).map(([re, cnt], i) => ({
+        name: re.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()),
+        value: Math.round((cnt / total) * 100),
+        color: colors[i % colors.length]
+      }));
+    }
+
+    return [];
+  }, [delayReasons, projects]);
 
   // Clearance Bottlenecks
-  const clearanceBottlenecks = clearanceList.length > 0 ? clearanceList : [
-    { name: 'Forest & Wildlife Clearance Stage II', pending: 34, avgDays: '142 days', risk: 'High' },
-    { name: 'State Land Acquisition Possession', pending: 28, avgDays: '188 days', risk: 'Critical' },
-    { name: 'Railway Safety Commissioner Sanction', pending: 19, avgDays: '65 days', risk: 'Medium' },
-    { name: 'Environmental Impact Assessment (EIA)', pending: 15, avgDays: '92 days', risk: 'Medium' },
-  ];
+  const clearanceBottlenecks = clearanceList;
 
   return (
     <div className="main-dashboard-content space-y-7 text-slate-800">
@@ -314,7 +330,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
                 <AlertTriangle size={18} />
               </span>
               <span className="text-xs font-bold text-red-600 flex items-center gap-1 bg-red-50 px-2.5 py-1 rounded-full border border-red-100/80 shrink-0">
-                <TrendingUp size={13} /> {criticalProjects.length || 18} Critical
+                <TrendingUp size={13} /> {criticalCount} Critical
               </span>
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-red-600 tracking-tight mt-3">{totalAtRiskCount}</div>
@@ -636,7 +652,7 @@ const ProjectDashboard = ({ projects = [], onInspect }) => {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Early Warning Signals</h2>
               <span className="bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200">
-                {liveAlerts.length || criticalProjects.length || 18} Active Risk Flags
+                {liveAlerts.length || criticalCount || 0} Active Risk Flags
               </span>
             </div>
 

@@ -185,14 +185,14 @@ export function classifyDelayRuleBased(text = '') {
  * @returns {Promise<Object>}
  */
 export async function classifyDelayReason(text = '') {
-  const mlServiceUrl = process.env.ML_SERVICE_URL;
+  const mlServiceUrl = process.env.ML_API_URL || process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000';
 
-  if (mlServiceUrl && text && text.trim().length > 5) {
+  if (mlServiceUrl && text && text.trim().length > 3) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-      const response = await fetch(`${mlServiceUrl}/api/classify-delay`, {
+      const response = await fetch(`${mlServiceUrl}/classify-delay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
@@ -205,7 +205,7 @@ export async function classifyDelayReason(text = '') {
         const mlResult = await response.json();
         if (mlResult && mlResult.category) {
           return {
-            category: mlResult.category,
+            category: mlResult.category.toUpperCase().replace(/\s+/g, '_'),
             confidence: mlResult.confidence || 0.9,
             matchedKeywords: mlResult.matchedKeywords || [],
             source: 'PYTHON_ML_SERVICE'
@@ -214,7 +214,6 @@ export async function classifyDelayReason(text = '') {
       }
     } catch (err) {
       // Graceful fallback to rule-based classifier
-      // console.warn('ML Service unreachable, falling back to rule-based delay classifier:', err.message);
     }
   }
 

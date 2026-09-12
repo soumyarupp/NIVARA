@@ -135,7 +135,7 @@ function App() {
             } />
 
             <Route path="/chatbot" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IPMD_ADMIN', 'MINISTRY_OFFICER', 'MINISTRY_ADMIN', 'NODAL_OFFICER', 'IMPLEMENTATION_AGENCY', 'AGENCY_ADMIN']}>
                 <ChatbotPage />
               </ProtectedRoute>
             } />

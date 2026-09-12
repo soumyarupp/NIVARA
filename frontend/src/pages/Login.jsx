@@ -4,20 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import authApi from '../api/authApi';
 
-const CAPTCHA_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-
 const Login = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
-  const [captchaCode, setCaptchaCode] = useState('');
-  const [captchaTilts, setCaptchaTilts] = useState([]);
-  const [captchaInputVal, setCaptchaInputVal] = useState('');
   const [username, setUsername] = useState('super.admin@nivara.gov.in');
   const [password, setPassword] = useState('Admin@12345');
   const [showPassword, setShowPassword] = useState(false);
   const [authAlert, setAuthAlert] = useState(null); // { message, isError }
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCaptchaSpinning, setIsCaptchaSpinning] = useState(false);
   const [language, setLanguage] = useState('EN');
 
   // If already authenticated, redirect straight to dashboard
@@ -27,32 +21,6 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const generateCaptcha = useCallback(() => {
-    let code = "";
-    const tilts = [];
-    for (let i = 0; i < 6; i++) {
-      code += CAPTCHA_CHARS.charAt(Math.floor(Math.random() * CAPTCHA_CHARS.length));
-      const randomTilt = (Math.random() * 14 - 7).toFixed(1);
-      const randomY = (Math.random() * 4 - 2).toFixed(1);
-      tilts.push({ tilt: randomTilt, y: randomY });
-    }
-    setCaptchaCode(code);
-    setCaptchaTilts(tilts);
-    setCaptchaInputVal('');
-  }, []);
-
-  useEffect(() => {
-    generateCaptcha();
-  }, [generateCaptcha]);
-
-  const handleReloadCaptcha = () => {
-    setIsCaptchaSpinning(true);
-    generateCaptcha();
-    setTimeout(() => {
-      setIsCaptchaSpinning(false);
-    }, 450);
-  };
-
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim()) {
@@ -61,15 +29,6 @@ const Login = () => {
     }
     if (!password.trim()) {
       setAuthAlert({ message: "Please enter your password.", isError: true });
-      return;
-    }
-    if (!captchaInputVal.trim()) {
-      setAuthAlert({ message: "Please enter the 6-character verification code.", isError: true });
-      return;
-    }
-    if (captchaInputVal.trim().toUpperCase() !== captchaCode) {
-      setAuthAlert({ message: "Verification code does not match. Please try again.", isError: true });
-      generateCaptcha();
       return;
     }
 
@@ -88,7 +47,6 @@ const Login = () => {
       }, 400);
     } catch (err) {
       setIsSubmitting(false);
-      generateCaptcha();
       setAuthAlert({ 
         message: err.response?.data?.message || err.message || "Authentication failed. Please verify your credentials.", 
         isError: true 
@@ -249,57 +207,6 @@ const Login = () => {
                       )}
                     </svg>
                   </button>
-                </div>
-              </div>
-
-              {/* CAPTCHA / Verification Code */}
-              <div className="form-group">
-                <label htmlFor="captcha-input" className="form-label">
-                  Verification Code <span className="req">*</span>
-                </label>
-
-                <div className="captcha-card">
-                  <div className="captcha-preview" title="Security Verification Code">
-                    <div className="captcha-noise"></div>
-                    {captchaCode.split('').map((char, i) => (
-                      <span
-                        key={i}
-                        className={`captcha-char char-${i + 1}`}
-                        style={{
-                          transform: captchaTilts[i]
-                            ? `rotate(${captchaTilts[i].tilt}deg) translateY(${captchaTilts[i].y}px)`
-                            : 'none'
-                        }}
-                      >
-                        {char}
-                      </span>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    className={`captcha-reload-btn ${isCaptchaSpinning ? 'spinning' : ''}`}
-                    onClick={handleReloadCaptcha}
-                    title="Regenerate Verification Code"
-                  >
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="input-wrapper">
-                  <input
-                    type="text"
-                    id="captcha-input"
-                    className="form-input captcha-type"
-                    placeholder="Enter 6-character code"
-                    maxLength="6"
-                    autoComplete="off"
-                    value={captchaInputVal}
-                    onChange={e => setCaptchaInputVal(e.target.value)}
-                    required
-                  />
                 </div>
               </div>
 

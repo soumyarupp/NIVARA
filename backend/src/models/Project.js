@@ -25,6 +25,23 @@ const monthlyReportItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const actionHistoryItemSchema = new mongoose.Schema(
+  {
+    actionId: { type: String },
+    actionType: { type: String, default: 'OFFICER_ACTION' },
+    actionCategory: { type: String, default: 'GROUND_AUDIT' },
+    title: { type: String, default: '' },
+    remarks: { type: String, default: '' },
+    takenBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    takenByName: { type: String, default: 'Designated Officer' },
+    takenByRole: { type: String, default: 'NODAL_OFFICER' },
+    takenAt: { type: Date, default: Date.now },
+    previousStatus: { type: String, default: 'IN_PROGRESS' },
+    updatedStatus: { type: String, default: 'MITIGATION_ACTIVE' }
+  },
+  { _id: false }
+);
+
 const projectSchema = new mongoose.Schema(
   {
     projectName: {
@@ -92,6 +109,14 @@ const projectSchema = new mongoose.Schema(
       default: null,
       index: true
     },
+    nodalOfficerName: { type: String, default: '' },
+    nodalOfficerEmail: { type: String, default: '' },
+    nodalOfficerPhone: { type: String, default: '' },
+    nodalOfficerDesignation: { type: String, default: '' },
+    reportingOfficerName: { type: String, default: '' },
+    reportingOfficerEmail: { type: String, default: '' },
+    reportingOfficerPhone: { type: String, default: '' },
+    reportingOfficerDesignation: { type: String, default: '' },
     status: {
       type: String,
       default: 'IN_PROGRESS'
@@ -199,6 +224,14 @@ const projectSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      default: null
+    },
+    actionHistory: {
+      type: [actionHistoryItemSchema],
+      default: []
+    },
+    latestAction: {
+      type: actionHistoryItemSchema,
       default: null
     }
   },

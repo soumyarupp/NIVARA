@@ -8,6 +8,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node scripts/seed.js",
+    "seed:flash": "node scripts/importExcelFlashReports.js",
+    "import:flash": "node scripts/importExcelFlashReports.js",
     "test": "NODE_ENV=test node --test tests/*.test.js"
   },
   "dependencies": {

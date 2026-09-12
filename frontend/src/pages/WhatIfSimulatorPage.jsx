@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './Dashboard.css';
 import { 
   Sliders, 
@@ -25,44 +26,54 @@ import {
 import AdminSidebar from '../components/AdminSidebar';
 import AdminTopHeader from '../components/AdminTopHeader';
 import Footer from '../components/Footer';
-import { projectApi } from '../api/projectApi';
-import { simulatorApi } from '../api/simulatorApi';
+import projectApi from '../api/projectApi';
+import simulatorApi from '../api/simulatorApi';
 
 const DEFAULT_SAMPLE_PROJECTS = [
   {
     _id: 'default-1',
-    name: 'NH-48 Expressway Expansion & Grade Separator (Package IV)',
-    projectName: 'NH-48 Expressway Expansion & Grade Separator (Package IV)',
-    projectCode: 'NHAI-NH48-P4',
-    sanctionedCost: 1450,
-    sector: 'Highways & Expressways',
-    targetCompletionDate: '2028-12-31',
-    state: 'Maharashtra'
+    id: 'default-1',
+    name: 'NH-44 Corridor Expansion & Smart Bypass 6-Lane',
+    projectName: 'NH-44 Corridor Expansion & Smart Bypass 6-Lane',
+    projectCode: 'NHAI-NH44-BYPASS',
+    sanctionedCost: 1250,
+    budgetEstimatedInCrores: 1250,
+    sector: 'Roads & Expressways',
+    targetCompletionDate: '2028-12-31'
   },
   {
     _id: 'default-2',
-    name: 'Dedicated Eastern Freight Corridor (Sonnagar - Dankuni Section)',
-    projectName: 'Dedicated Eastern Freight Corridor (Sonnagar - Dankuni Section)',
-    projectCode: 'DFCCIL-EDFC-02',
-    sanctionedCost: 3200,
+    id: 'default-2',
+    name: 'Western Dedicated Freight Corridor Phase II',
+    projectName: 'Western Dedicated Freight Corridor Phase II',
+    projectCode: 'DFCCIL-WDFC-02',
+    sanctionedCost: 3400,
+    budgetEstimatedInCrores: 3400,
     sector: 'Railways & Freight',
-    targetCompletionDate: '2029-06-30',
-    state: 'Bihar / West Bengal'
+    targetCompletionDate: '2027-06-30'
   },
   {
     _id: 'default-3',
-    name: 'Ultra Mega Green Solar Infrastructure Complex (Phase II)',
-    projectName: 'Ultra Mega Green Solar Infrastructure Complex (Phase II)',
-    projectCode: 'SECI-SOLAR-09',
-    sanctionedCost: 880,
-    sector: 'Renewable Power',
-    targetCompletionDate: '2027-09-30',
-    state: 'Rajasthan'
+    id: 'default-3',
+    name: 'Chenab River Hydro-Electric Power Station 850MW',
+    projectName: 'Chenab River Hydro-Electric Power Station 850MW',
+    projectCode: 'NHPC-CHENAB-HYDRO',
+    sanctionedCost: 5280,
+    budgetEstimatedInCrores: 5280,
+    sector: 'Power & Energy',
+    targetCompletionDate: '2029-03-31'
   }
 ];
 
 function calculateSimulation(project, months, inflation, isLand, isEco, isContractor) {
-  const baseCost = Number(project?.sanctionedCost || project?.budget?.sanctionedCost || project?.originalProjectCost || project?.revisedProjectCost || 1250);
+  const baseCost = Number(
+    project?.sanctionedCost ||
+    project?.budgetEstimatedInCrores ||
+    project?.budget?.sanctionedCost ||
+    project?.originalProjectCost ||
+    project?.revisedProjectCost ||
+    1250
+  );
   const m = Math.max(0, Number(months) || 0);
   const inf = Math.max(0, Number(inflation) || 0);
 
@@ -106,9 +117,12 @@ function calculateSimulation(project, months, inflation, isLand, isEco, isContra
 }
 
 export default function WhatIfSimulatorPage() {
+  const [searchParams] = useSearchParams();
+  const queryProjectId = searchParams.get('projectId');
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [projects, setProjects] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [projects, setProjects] = useState(DEFAULT_SAMPLE_PROJECTS);
+  const [selectedProjectId, setSelectedProjectId] = useState(queryProjectId || DEFAULT_SAMPLE_PROJECTS[0].id);
   const [selectedProject, setSelectedProject] = useState(DEFAULT_SAMPLE_PROJECTS[0]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
@@ -119,7 +133,7 @@ export default function WhatIfSimulatorPage() {
   const [environmentalClearancePending, setEnvironmentalClearancePending] = useState(false);
   const [contractorDefaultRisk, setContractorDefaultRisk] = useState(false);
 
-  // Computed state initialized with safe baseline
+  // Computed state
   const [simulating, setSimulating] = useState(false);
   const [result, setResult] = useState(() => 
     calculateSimulation(DEFAULT_SAMPLE_PROJECTS[0], 6, 5.5, true, false, false)
@@ -127,8 +141,9 @@ export default function WhatIfSimulatorPage() {
 
   // Recalculate whenever inputs change
   const computeAndSetResult = useCallback((proj = selectedProject) => {
+    const targetProj = proj || selectedProject || DEFAULT_SAMPLE_PROJECTS[0];
     const computed = calculateSimulation(
-      proj,
+      targetProj,
       delayMonths,
       inflationRate,
       landAcquisitionDelayed,
@@ -139,38 +154,43 @@ export default function WhatIfSimulatorPage() {
   }, [selectedProject, delayMonths, inflationRate, landAcquisitionDelayed, environmentalClearancePending, contractorDefaultRisk]);
 
   useEffect(() => {
-    computeAndSetResult();
-  }, [computeAndSetResult]);
+    if (selectedProject) {
+      computeAndSetResult(selectedProject);
+    }
+  }, [computeAndSetResult, selectedProject]);
 
   useEffect(() => {
     async function loadProjects() {
       try {
         setLoadingProjects(true);
-        const data = await projectApi.getProjects({ limit: 50 });
+        const data = await projectApi.getProjects({ limit: 100 });
         const list = Array.isArray(data) ? data : (data?.projects || []);
         
         if (list.length > 0) {
           setProjects(list);
-          const first = list[0];
-          setSelectedProjectId(first._id || first.id);
-          setSelectedProject(first);
-          computeAndSetResult(first);
+          const matched = queryProjectId 
+            ? list.find(p => (p._id === queryProjectId || p.id === queryProjectId || p.projectCode === queryProjectId))
+            : null;
+          const target = matched || list[0];
+          setSelectedProjectId(target._id || target.id);
+          setSelectedProject(target);
+          computeAndSetResult(target);
         } else {
           setProjects(DEFAULT_SAMPLE_PROJECTS);
-          setSelectedProjectId(DEFAULT_SAMPLE_PROJECTS[0]._id);
           setSelectedProject(DEFAULT_SAMPLE_PROJECTS[0]);
+          computeAndSetResult(DEFAULT_SAMPLE_PROJECTS[0]);
         }
       } catch (err) {
-        console.warn('Using default simulator projects fallback:', err);
+        console.warn('Failed to load simulator projects:', err);
         setProjects(DEFAULT_SAMPLE_PROJECTS);
-        setSelectedProjectId(DEFAULT_SAMPLE_PROJECTS[0]._id);
         setSelectedProject(DEFAULT_SAMPLE_PROJECTS[0]);
+        computeAndSetResult(DEFAULT_SAMPLE_PROJECTS[0]);
       } finally {
         setLoadingProjects(false);
       }
     }
     loadProjects();
-  }, []);
+  }, [queryProjectId]);
 
   const handleProjectChange = (id) => {
     setSelectedProjectId(id);

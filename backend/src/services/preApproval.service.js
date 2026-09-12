@@ -1,6 +1,7 @@
 import { PreApproval } from '../models/PreApproval.js';
 import { Project } from '../models/Project.js';
 import { MonthlyReport } from '../models/MonthlyReport.js';
+import { getProjectAiAnalysis } from './ai.service.js';
 
 /**
  * Data-Driven Pre-Approval Risk Simulation Engine
@@ -162,6 +163,21 @@ export async function simulatePreApprovalRisk({
     createdBy: userId
   });
 
+  // Query live CatBoost & Isolation Forest AI Engine for pre-approval intake
+  let aiPrediction = null;
+  try {
+    aiPrediction = await getProjectAiAnalysis({
+      projectCode: `PRE-APP-${Date.now().toString().slice(-6)}`,
+      sanctionedCost: costNumber,
+      revisedCost: costNumber,
+      expenditure: 0,
+      physicalProgress: 0,
+      delayMonths: predictedDelayMonths,
+      agency: agency || 'NHAI',
+      state: state || 'National'
+    });
+  } catch (_) {}
+
   return {
     simulationId: record._id,
     projectName,
@@ -177,7 +193,8 @@ export async function simulatePreApprovalRisk({
       sectorAvgRiskScore: Math.round(avgDbRiskScore),
       sectorAvgDelayMonths: Math.round(avgDbDelayDays / 30),
       historicalCostOverrunRate: `${(avgOverrunRate * 100).toFixed(1)}%`
-    }
+    },
+    aiPrediction
   };
 }
 

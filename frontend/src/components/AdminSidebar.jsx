@@ -72,14 +72,12 @@ const AdminSidebar = ({ isCollapsed: propCollapsed, onToggleCollapse: propToggle
           items: [
             { label: 'My Field Dashboard', path: '/dashboard', icon: LayoutDashboard, badge: 'Live' },
             { label: 'Submit Monthly Report', path: '/submit-report', icon: Send, badge: 'Entry' },
-            { label: 'Past Reports History', path: '/reports', icon: FileText, badge: 'Audit' },
-            { label: 'Assigned Projects', path: '/projects', icon: FolderKanban }
+            { label: 'Past Reports History', path: '/reports', icon: FileText, badge: 'Audit' }
           ]
         },
         {
-          title: 'AI Field Assistance',
+          title: 'Field Communications',
           items: [
-            { label: 'NIVARA Copilot AI', path: '/chatbot', icon: Bot, badge: 'GPT' },
             { label: 'Field Notifications', path: '/notifications', icon: Bell }
           ]
         }

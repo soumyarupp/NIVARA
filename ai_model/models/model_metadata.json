@@ -1,0 +1,141 @@
+{
+  "platform": "NIVARA Infrastructure Monitoring AI",
+  "version": "2.0.0",
+  "pipeline_timestamp": "2026-09-11T17:49:36.253925+00:00",
+  "pipeline_duration_seconds": 27.58,
+  "dataset_summary": {
+    "total_monthly_snapshots": 28171,
+    "unique_projects": 3521,
+    "date_range": [
+      "2026-01-28",
+      "2026-09-11"
+    ],
+    "completed_project_snapshots": 7312,
+    "cost_training_snapshots": 7368
+  },
+  "models": {
+    "completion_model": {
+      "model_name": "CatBoost Completion Regressor",
+      "sample_count": 7312,
+      "unique_projects": 914,
+      "features": [
+        "state",
+        "sector",
+        "agency",
+        "project_status",
+        "progress_trend",
+        "original_cost",
+        "revised_cost",
+        "project_age_months",
+        "physical_progress",
+        "financial_progress",
+        "remaining_progress",
+        "average_monthly_progress_3m",
+        "average_monthly_progress_6m",
+        "progress_slowdown",
+        "delay_months",
+        "planned_duration_months",
+        "elapsed_duration_months",
+        "progress_change_3_months",
+        "progress_change_6_months"
+      ],
+      "is_trained": true,
+      "mae_months": 1.348,
+      "rmse_months": 2.148,
+      "r2_score": 0.432,
+      "baseline_mode": false,
+      "notes": "Trained on 7312 historical snapshots across 914 projects with 5-fold project CV."
+    },
+    "cost_model": {
+      "model_name": "CatBoost Cost Regressor",
+      "sample_count": 7368,
+      "unique_projects": 921,
+      "features": [
+        "state",
+        "sector",
+        "agency",
+        "monthly_spending_trend",
+        "original_cost",
+        "revised_cost",
+        "cumulative_expenditure",
+        "physical_progress",
+        "financial_progress",
+        "remaining_progress",
+        "average_monthly_spending_3m",
+        "average_monthly_spending_6m",
+        "project_age_months",
+        "delay_months",
+        "expected_delay_months",
+        "progress_mismatch_gap"
+      ],
+      "is_trained": true,
+      "mae_crore": 284.28,
+      "rmse_crore": 3497.32,
+      "mape_pct": 956.39,
+      "baseline_mode": false,
+      "notes": "Trained on 7368 historical snapshots across 921 projects with 5-fold project CV."
+    },
+    "risk_model": {
+      "model_name": "CatBoost Risk Classifier",
+      "sample_count": 28171,
+      "unique_projects": 3521,
+      "features": [
+        "state",
+        "sector",
+        "agency",
+        "progress_trend",
+        "mismatch_status",
+        "original_cost",
+        "revised_cost",
+        "cumulative_expenditure",
+        "physical_progress",
+        "financial_progress",
+        "progress_mismatch_gap",
+        "delay_months",
+        "average_monthly_progress_3m",
+        "average_monthly_spending_3m",
+        "project_age_months",
+        "planned_duration_months",
+        "progress_slowdown"
+      ],
+      "is_trained": true,
+      "accuracy": 0.9889,
+      "precision": 0.9987,
+      "recall": 0.9833,
+      "f1_score": 0.991,
+      "roc_auc": 0.9981,
+      "target_distribution": {
+        "low_medium_risk_0": 10728,
+        "high_critical_risk_1": 17443
+      },
+      "notes": "Trained on 28171 monthly records across 3521 projects with 5-fold project CV."
+    },
+    "nlp_delay_classifier": {
+      "model_name": "TF-IDF + LogisticRegression Delay Classifier",
+      "sample_count": 67,
+      "num_classes": 12,
+      "categories": [
+        "Land Acquisition",
+        "Fund Shortage",
+        "Contractor Issue",
+        "Material Shortage",
+        "Labour Shortage",
+        "Environmental Clearance",
+        "Design Change",
+        "Legal Issue",
+        "Weather or Natural Disaster",
+        "Administrative Approval",
+        "Utility Shifting",
+        "Other"
+      ],
+      "cv_accuracy_mean": 0.3125,
+      "cv_accuracy_std": 0.0601,
+      "is_trained": true
+    }
+  },
+  "system_limitations": {
+    "historical_depth": "7 monthly reporting cycles (January 2026 - July 2026)",
+    "fallback_mechanism": "Calibrated burn-rate baseline formulas are blended with CatBoost inference when project historical depth is limited.",
+    "data_leakage_prevention": "All evaluations use project-level GroupKFold partitioning."
+  }
+}

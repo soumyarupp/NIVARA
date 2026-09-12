@@ -1,441 +1,272 @@
-from fastapi import FastAPI, HTTPException
+"""
+api.py
+-------------------------------------------------------------------------
+NIVARA AI Platform - Production FastAPI Prediction & Monitoring Service.
+Provides RESTful endpoints for Node.js backend integration, Render
+cloud deployment, interactive What-If simulation, and delay NLP analysis.
+-------------------------------------------------------------------------
+"""
+
+import os
+import logging
+from typing import List, Optional, Any, Dict
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import pandas as pd
-import joblib
-import os
-import shap
+import numpy as np
+from src.utils import logger, sanitize_for_json
+from src.prediction import predictor
+from src.feature_engineering import get_last_3_months
+from src.train_delay_nlp import classify_delay_reason
 
+# -----------------------------------------------------------------------
+# FASTAPI APP INITIALIZATION
+# -----------------------------------------------------------------------
 app = FastAPI(
-    title="NIVARA API",
-    description="AI-driven Government Infrastructure Project Monitoring",
-    version="1.0.0"
+    title="NIVARA AI Model Service",
+    description="Production Machine Learning & Risk Intelligence Engine for Government Infrastructure Monitoring",
+    version="2.0.0"
 )
 
+# CORS configuration for Node.js backend & Next.js/React frontend
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=CORS_ORIGINS if CORS_ORIGINS != ["*"] else ["*"],
+    allow_credentials=True if CORS_ORIGINS != ["*"] else False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "real_2025_26")
-DATA_PATH = "data/nivara_real_paima_2025_26.csv"
 
-# --------------------------------------------------
-# LOAD REAL 2025-26 MODELS
-# --------------------------------------------------
+# -----------------------------------------------------------------------
+# PYDANTIC REQUEST & RESPONSE SCHEMAS
+# -----------------------------------------------------------------------
 
-risk_3m = joblib.load(
-    os.path.join(MODEL_DIR, "risk_3m_catboost_temporal.joblib")
-)
+class ProjectPredictRequest(BaseModel):
+    project_id: Optional[str] = Field(default="PRJ001", description="Unique Project ID or OCMS Code")
+    project_code: Optional[str] = None
+    report_date: Optional[str] = Field(default=None, description="Report date (YYYY-MM-DD or Month YYYY)")
+    state: Optional[str] = Field(default="National", description="Indian State / UT")
+    sector: Optional[str] = Field(default="Infrastructure", description="Project Sector (Road, Rail, Energy...)")
+    agency: Optional[str] = Field(default="Implementation Agency", description="Executing Agency")
+    project_status: Optional[str] = Field(default="Ongoing", description="Current Status")
 
-shap_explainer = shap.TreeExplainer(risk_3m)
+    # Financials (₹ Crore)
+    original_cost: Optional[float] = Field(default=None, ge=0)
+    original_cost_crore: Optional[float] = Field(default=None, ge=0)
+    sanctionedCost: Optional[float] = None
 
-risk_6m = joblib.load(
-    os.path.join(MODEL_DIR, "risk_6m_catboost.joblib")
-)
+    revised_cost: Optional[float] = Field(default=None, ge=0)
+    revised_cost_crore: Optional[float] = Field(default=None, ge=0)
+    revisedCost: Optional[float] = None
 
-anomaly_artifact = joblib.load(
-    os.path.join(MODEL_DIR, "anomaly_iforest.joblib")
-)
+    cumulative_expenditure: Optional[float] = Field(default=None, ge=0)
+    cumulative_expenditure_crore: Optional[float] = Field(default=None, ge=0)
+    expenditure: Optional[float] = None
 
-knn_artifact = joblib.load(
-    os.path.join(MODEL_DIR, "similarity_knn.joblib")
-)
+    # Progress (%)
+    physical_progress: Optional[float] = Field(default=None, ge=0, le=100)
+    physical_progress_pct: Optional[float] = Field(default=None, ge=0, le=100)
 
-anomaly_scaler = anomaly_artifact["scaler"]
-anomaly_model = anomaly_artifact["model"]
+    financial_progress: Optional[float] = Field(default=None, ge=0, le=100)
+    financial_progress_pct: Optional[float] = None
 
-knn_scaler = knn_artifact["scaler"]
-knn_model = knn_artifact["model"]
-knn_project_ids = knn_artifact["index_project_ids"]
+    # History vectors
+    monthly_progress_history: Optional[List[float]] = Field(default_factory=list)
+    monthly_expenditure_history: Optional[List[float]] = Field(default_factory=list)
 
-# --------------------------------------------------
-# INPUT FEATURES
-# --------------------------------------------------
+    # Dates & Delays
+    original_completion_date: Optional[str] = None
+    originalCompletionDate: Optional[str] = None
+    start_date: Optional[str] = None
+    startDate: Optional[str] = None
+    delay_months: Optional[float] = Field(default=0.0, ge=0)
+    schedule_delay_months: Optional[float] = None
 
-FEATURES = [
-    "original_cost_crore",
-    "revised_cost_crore",
-    "cumulative_expenditure_crore",
-    "physical_progress_pct",
-    "expenditure_ratio",
-    "cost_change_ratio",
-    "schedule_delay_months",
-    "month_num",
-    "agency",
-    "state"
-]
 
-NUMERIC_FEATURES = [
-    "original_cost_crore",
-    "revised_cost_crore",
-    "cumulative_expenditure_crore",
-    "physical_progress_pct",
-    "expenditure_ratio",
-    "cost_change_ratio",
-    "schedule_delay_months",
-    "month_num"
-]
-
-# --------------------------------------------------
-# REQUEST SCHEMA
-# --------------------------------------------------
-
-class ProjectInput(BaseModel):
-
+class ProjectHistoryRequest(BaseModel):
     project_id: str
-
-    original_cost_crore: float = Field(ge=0)
-    revised_cost_crore: float = Field(ge=0)
-    cumulative_expenditure_crore: float = Field(ge=0)
-
-    physical_progress_pct: float = Field(ge=0, le=100)
-
-    expenditure_ratio: float = Field(ge=0)
-    cost_change_ratio: float
-
-    schedule_delay_months: float
-    month_num: int = Field(ge=1, le=12)
-
-    agency: str
-    state: str
+    months: Optional[int] = 3
+    records: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
 
 
-# --------------------------------------------------
-# DATAFRAME
-# --------------------------------------------------
-
-def make_dataframe(data: ProjectInput):
-
-    row = {
-        "original_cost_crore": data.original_cost_crore,
-        "revised_cost_crore": data.revised_cost_crore,
-        "cumulative_expenditure_crore":
-            data.cumulative_expenditure_crore,
-        "physical_progress_pct":
-            data.physical_progress_pct,
-        "expenditure_ratio":
-            data.expenditure_ratio,
-        "cost_change_ratio":
-            data.cost_change_ratio,
-        "schedule_delay_months":
-            data.schedule_delay_months,
-        "month_num":
-            data.month_num,
-        "agency": str(data.agency),
-        "state": str(data.state)
-    }
-
-    return pd.DataFrame(
-        [row],
-        columns=FEATURES
-    )
+class DelayClassificationRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Officer remark or delay reason explanation")
 
 
-# --------------------------------------------------
-# RISK
-# --------------------------------------------------
-
-def predict_risk(model, X):
-
-    probability = float(
-        model.predict_proba(X)[0][1]
-    )
-
-    if probability >= 0.70:
-        label = "HIGH_RISK"
-    elif probability >= 0.40:
-        label = "MEDIUM_RISK"
-    else:
-        label = "LOW_RISK"
-
-    return {
-        "probability": round(probability, 4),
-        "prediction": label
-    }
+class DelaySimulationRequest(BaseModel):
+    project_id: str
+    additional_delay_months: float = Field(default=3.0, ge=0)
+    current_prediction: Optional[Dict[str, Any]] = None
 
 
-# --------------------------------------------------
-# ANOMALY
-# --------------------------------------------------
-
-def detect_anomaly(X):
-
-    numeric = X[NUMERIC_FEATURES]
-
-    scaled = anomaly_scaler.transform(numeric)
-
-    prediction = int(
-        anomaly_model.predict(scaled)[0]
-    )
-
-    score = float(
-        anomaly_model.decision_function(scaled)[0]
-    )
-
-    return {
-        "is_anomaly": prediction == -1,
-        "score": round(score, 4)
-    }
-
-
-# --------------------------------------------------
-# SIMILAR PROJECTS
-# --------------------------------------------------
-
-def find_similar(X, current_project_id, n=5):
-
-    numeric = X[NUMERIC_FEATURES]
-
-    scaled = knn_scaler.transform(numeric)
-
-    distances, indices = knn_model.kneighbors(
-        scaled,
-        n_neighbors=min(n + 1, len(knn_project_ids))
-    )
-
-    results = []
-    seen = set()
-
-    for distance, index in zip(
-        distances[0],
-        indices[0]
-    ):
-
-        project_id = str(
-            knn_project_ids[index]
-        )
-
-        if project_id == str(current_project_id):
-            continue
-
-        if project_id in seen:
-            continue
-
-        seen.add(project_id)
-
-        results.append({
-            "project_id": project_id,
-            "distance": round(
-                float(distance), 4
-            )
-        })
-
-        if len(results) == n:
-            break
-
-    return results
-
-
-# --------------------------------------------------
-# SHAP EXPLANATION
-# --------------------------------------------------
-def explain_risk(X):
-    shap_values = shap_explainer.shap_values(X)
-    values = shap_values[1][0] if isinstance(shap_values, list) else shap_values[0]
-    factors = sorted(zip(FEATURES, values), key=lambda x: abs(x[1]), reverse=True)
-    return [{"feature": name, "impact": round(float(value), 4)} for name, value in factors[:5]]
-
-# --------------------------------------------------
-# HEALTH CHECK
-# --------------------------------------------------
+# -----------------------------------------------------------------------
+# ENDPOINTS
+# -----------------------------------------------------------------------
 
 @app.get("/")
 def root():
-
     return {
-        "service": "NIVARA",
+        "service": "NIVARA AI Model Service",
         "status": "online",
-        "model_data": "2025-26",
-        "message": "NIVARA API is running"
+        "version": "2.0.0",
+        "endpoints": [
+            "GET /health",
+            "POST /predict",
+            "POST /project-history",
+            "POST /classify-delay",
+            "POST /simulate-delay",
+            "GET /projects",
+            "GET /projects/{project_id}"
+        ]
     }
-
-
-# --------------------------------------------------
-# MAIN AI ANALYSIS
-# --------------------------------------------------
-
-@app.post("/predict")
-def predict(data: ProjectInput):
-
-    try:
-
-        X = make_dataframe(data)
-
-        risk3 = predict_risk(
-            risk_3m,
-            X
-        )
-
-        risk6 = predict_risk(
-            risk_6m,
-            X
-        )
-
-
-        anomaly = detect_anomaly(X)
-        shap_factors = explain_risk(X)
-
-        similar = find_similar(
-            X,
-            data.project_id
-        )
-
-        # Overall decision follows NIVARA flowchart
-        if (
-            risk3["prediction"] == "HIGH_RISK"
-            or risk6["prediction"] == "HIGH_RISK"
-            or anomaly["is_anomaly"]
-        ):
-            decision = "AT_RISK"
-        else:
-            decision = "HEALTHY"
-
-        return {
-            "project_id": data.project_id,
-
-            "risk": {
-                "3_month": risk3,
-                "6_month": risk6
-            },
-
-            "anomaly": anomaly,
-            "shap_factors": shap_factors,
-
-            "similar_projects": similar,
-
-            "decision": decision,
-
-            "next_action": (
-                "Generate warning and notify officer"
-                if decision == "AT_RISK"
-                else "Continue monitoring"
-            )
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
-
-# --------------------------------------------------
-# PROJECT LIST
-# --------------------------------------------------
-
-@app.get("/projects-2026-27")
-def get_projects_2026_27():
-    path = "data/nivara_paima_2026_27_april.csv"
-
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="April 2026 PAIMANA dataset not found")
-
-    df = pd.read_csv(path)
-
-    fields = [
-        "project_code", "project_name", "agency", "state",
-        "original_cost_crore", "revised_cost_crore",
-        "cumulative_expenditure_crore", "physical_progress_pct",
-        "expenditure_ratio", "cost_change_ratio",
-        "schedule_delay_months", "month_num", "report_month"
-    ]
-
-    df = df[fields].fillna(0)
-    df["agency"] = df["agency"].astype(str)
-    df["state"] = df["state"].astype(str)
-
-    return {
-        "count": len(df),
-        "report_month": "2026-04",
-        "projects": df.to_dict(orient="records")
-    }
-
-
-@app.get("/projects/{project_id}")
-def get_project(project_id: str):
-    if not os.path.exists(DATA_PATH):
-        raise HTTPException(status_code=404, detail="PAIMANA dataset not found")
-
-    df = pd.read_csv(DATA_PATH)
-    matches = df[df["project_code"].astype(str) == str(project_id)]
-
-    if matches.empty:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    matches = matches.sort_values("report_month")
-
-    return {
-        "project_id": project_id,
-        "history": matches.fillna(0).to_dict(orient="records")
-    }
-
-
-@app.get("/projects")
-def get_projects():
-    if not os.path.exists(DATA_PATH):
-        raise HTTPException(status_code=404, detail="PAIMANA dataset not found")
-
-    df = pd.read_csv(DATA_PATH)
-    df = df.sort_values("report_month")
-    projects = df.groupby("project_code", as_index=False).tail(1).copy()
-
-    fields = [
-        "project_code", "project_name", "agency", "state",
-        "original_cost_crore", "revised_cost_crore",
-        "cumulative_expenditure_crore", "physical_progress_pct",
-        "expenditure_ratio", "cost_change_ratio",
-        "schedule_delay_months", "month_num", "report_month"
-    ]
-
-    projects = projects[fields].fillna(0)
-    projects["agency"] = projects["agency"].astype(str)
-    projects["state"] = projects["state"].astype(str)
-
-    return {
-        "count": len(projects),
-        "projects": projects.to_dict(orient="records")
-    }
-
 
 
 @app.get("/health")
 def health():
     return {
         "status": "ok",
-        "service": "NIVARA ML API",
-        "model": "CatBoost",
-        "validation": {
-            "type": "temporal_holdout",
-            "train_period": "2025-07 to 2025-09",
-            "test_period": "2025-10 to 2025-12",
-            "auc": 0.8863,
-            "recall": 0.7928,
-            "f1": 0.7443
-        }
+        "service": "NIVARA AI Model"
     }
 
-@app.get("/model-info")
-def model_info():
-    return {
-        "model": "NIVARA-CatBoost-Temporal-v1",
-        "task": "3-month infrastructure project risk prediction",
-        "features": FEATURES,
-        "risk_thresholds": {
-            "low": "< 0.40",
-            "medium": "0.40 - 0.69",
-            "high": ">= 0.70"
-        },
-        "validation": {
-            "train": "July-September 2025",
-            "test": "October-December 2025",
-            "auc": 0.8863,
-            "precision": 0.7015,
-            "recall": 0.7928,
-            "f1": 0.7443
+
+@app.post("/predict")
+def predict_project(payload: ProjectPredictRequest):
+    """
+    Main prediction endpoint.
+    Computes forecasted completion date, remaining months, expected final expenditure,
+    cost overrun, multi-factor risk score, warnings, and past 3 months summary.
+    """
+    try:
+        data_dict = payload.model_dump(exclude_none=True)
+        # Ensure project_id is populated
+        if not data_dict.get("project_id") and data_dict.get("project_code"):
+            data_dict["project_id"] = data_dict["project_code"]
+
+        result = predictor.predict(data_dict)
+        return result
+    except Exception as e:
+        logger.error(f"Error during /predict: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/project-history")
+def project_history(payload: ProjectHistoryRequest):
+    """
+    Retrieves chronological monthly history records and rolling summary
+    statistics for the requested project.
+    """
+    try:
+        p_id = payload.project_id
+        if payload.records and len(payload.records) > 0:
+            # If records are provided directly in payload
+            df_custom = pd.DataFrame(payload.records)
+            df_custom["project_id"] = p_id
+            return get_last_3_months(p_id, df_custom)
+
+        return get_last_3_months(p_id, predictor.historical_df)
+    except Exception as e:
+        logger.error(f"Error in /project-history: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/classify-delay")
+def classify_delay(payload: DelayClassificationRequest):
+    """
+    NLP classification of project delay bottlenecks and constraints into
+    12 standard infrastructure categories.
+    """
+    try:
+        result = classify_delay_reason(payload.text)
+        return {
+            "category": result.get("category", "Other"),
+            "confidence": result.get("confidence", 0.5)
         }
+    except Exception as e:
+        logger.error(f"Error in /classify-delay: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/simulate-delay")
+def simulate_delay(payload: DelaySimulationRequest):
+    """
+    What-If delay simulation calculating timeline shift and additional burn-rate expenditure.
+    """
+    try:
+        result = predictor.simulate_delay(
+            project_id=payload.project_id,
+            additional_delay_months=payload.additional_delay_months,
+            current_prediction=payload.current_prediction
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Error in /simulate-delay: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/projects")
+def get_all_projects(limit: int = 100, offset: int = 0):
+    """
+    Lists unique projects from historical dataset with latest status summary.
+    """
+    if predictor.historical_df is None:
+        raise HTTPException(status_code=404, detail="Processed project dataset not loaded.")
+
+    df = predictor.historical_df
+    latest_projects = df.groupby("project_id", as_index=False).tail(1).copy()
+    total_count = len(latest_projects)
+
+    paginated = latest_projects.iloc[offset: offset + limit]
+    fields = [
+        "project_id", "project_name", "agency", "state", "sector",
+        "original_cost", "revised_cost", "cumulative_expenditure",
+        "physical_progress", "financial_progress", "delay_months",
+        "report_date", "project_status"
+    ]
+    avail_fields = [f for f in fields if f in paginated.columns]
+    records = paginated[avail_fields].fillna(0).to_dict(orient="records")
+
+    return {
+        "total_count": total_count,
+        "offset": offset,
+        "limit": limit,
+        "projects": sanitize_for_json(records)
     }
+
+
+@app.get("/projects/{project_id}")
+def get_project_by_id(project_id: str):
+    """
+    Fetches full chronological history and current prediction for a project.
+    """
+    if predictor.historical_df is None:
+        raise HTTPException(status_code=404, detail="Dataset not loaded.")
+
+    df = predictor.historical_df
+    matches = df[df["project_id"].astype(str) == str(project_id)].sort_values("report_date")
+    if matches.empty:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found.")
+
+    history_records = matches.fillna(0).to_dict(orient="records")
+    latest_snapshot = history_records[-1]
+    prediction = predictor.predict(latest_snapshot)
+
+    return {
+        "project_id": str(project_id),
+        "history_count": len(history_records),
+        "history": sanitize_for_json(history_records),
+        "current_prediction": prediction
+    }
+
+
+# -----------------------------------------------------------------------
+# ENTRY POINT FOR LOCAL RUN & RENDER DEPLOYMENT
+# -----------------------------------------------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    host = os.getenv("HOST", "0.0.0.0")
+    logger.info(f"Starting NIVARA AI Server on {host}:{port}")
+    uvicorn.run("api:app", host=host, port=port, reload=False)

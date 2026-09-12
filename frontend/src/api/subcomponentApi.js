@@ -16,6 +16,12 @@ export const subcomponentApi = {
   addClearance: async (projectId, data) => {
     return apiClient.post(`/api/projects/${projectId}/clearances`, data);
   },
+  updateClearance: async (clearanceId, data) => {
+    return apiClient.patch(`/api/clearances/${clearanceId}`, data);
+  },
+  deleteClearance: async (clearanceId) => {
+    return apiClient.delete(`/api/clearances/${clearanceId}`);
+  },
 
   // Tenders
   getTenders: async (projectId) => {
@@ -31,6 +37,12 @@ export const subcomponentApi = {
   },
   addMilestone: async (projectId, data) => {
     return apiClient.post(`/api/projects/${projectId}/milestones`, data);
+  },
+  updateMilestone: async (milestoneId, data) => {
+    return apiClient.patch(`/api/milestones/${milestoneId}`, data);
+  },
+  deleteMilestone: async (milestoneId) => {
+    return apiClient.delete(`/api/milestones/${milestoneId}`);
   },
 
   // Partners

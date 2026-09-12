@@ -1,0 +1,22 @@
+{
+  "name": "nivara-root",
+  "version": "1.0.0",
+  "description": "NIVARA - National Infrastructure Verification & Accountability Reporting Authority",
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:ai": "cd ai_model && uvicorn api:app --reload --host 0.0.0.0 --port 8000",
+    "dev": "npm --prefix frontend run dev",
+    "start": "npm --prefix backend run start",
+    "build": "npm --prefix frontend run build",
+    "seed": "npm --prefix backend run seed",
+    "import:flash": "npm --prefix backend run import:flash"
+  },
+  "keywords": [
+    "nivara",
+    "infrastructure",
+    "sih"
+  ],
+  "author": "NIVARA Team",
+  "license": "ISC"
+}

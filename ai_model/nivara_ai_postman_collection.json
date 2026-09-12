@@ -1,0 +1,184 @@
+{
+  "info": {
+    "_postman_id": "nivara-ai-service-collection-v2",
+    "name": "NIVARA AI Model Service",
+    "description": "Complete Postman collection for NIVARA AI Prediction & Monitoring Service, including Next 3 Months Forecasting.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Checks the health and uptime status of the NIVARA AI prediction service."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Predict Project (Timeline, Cost & Next 3 Months Forecast)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"project_id\": \"PRJ001\",\n  \"report_date\": \"2026-07-01\",\n  \"state\": \"West Bengal\",\n  \"sector\": \"Road\",\n  \"agency\": \"Example Agency\",\n  \"original_cost\": 40.0,\n  \"revised_cost\": 42.0,\n  \"physical_progress\": 58.0,\n  \"financial_progress\": 62.0,\n  \"cumulative_expenditure\": 26.0,\n  \"monthly_progress_history\": [4.0, 4.0, 4.0, 4.0, 4.0, 3.0],\n  \"monthly_expenditure_history\": [2.0, 2.5, 2.5, 2.0, 2.5, 2.5],\n  \"original_completion_date\": \"2026-12-31\",\n  \"delay_months\": 0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/predict",
+          "host": ["{{baseUrl}}"],
+          "path": ["predict"]
+        },
+        "description": "Calculates completion timeline, expected final expenditure, cost overrun, risk score, warning reasons, and Month-by-Month forecast for the Next 3 Months."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Predict Project (Node.js Backend Compatibility)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"project_id\": \"612786\",\n  \"original_cost_crore\": 255.69,\n  \"revised_cost_crore\": 255.69,\n  \"cumulative_expenditure_crore\": 161.06,\n  \"physical_progress_pct\": 63.0,\n  \"expenditure_ratio\": 0.63,\n  \"cost_change_ratio\": 0.0,\n  \"schedule_delay_months\": 3.0,\n  \"month_num\": 7,\n  \"agency\": \"Airport Authority of India [AAI]\",\n  \"state\": \"Andhra Pradesh\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/predict",
+          "host": ["{{baseUrl}}"],
+          "path": ["predict"]
+        },
+        "description": "Compatibility endpoint supporting the 10-feature payload format from backend ai.service.js."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Get Project History (Last 3 Months)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"project_id\": \"400005\",\n  \"months\": 3,\n  \"records\": []\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/project-history",
+          "host": ["{{baseUrl}}"],
+          "path": ["project-history"]
+        },
+        "description": "Retrieves the latest 3 chronological monthly records and trend summary."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Classify Delay Reason (NLP)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"text\": \"Work delayed due to land acquisition problem and slow compensation disbursement by revenue department.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/classify-delay",
+          "host": ["{{baseUrl}}"],
+          "path": ["classify-delay"]
+        },
+        "description": "Categorizes officer remarks into 12 standard infrastructure delay categories."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Simulate Delay (What-If Analysis)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"project_id\": \"PRJ001\",\n  \"additional_delay_months\": 3,\n  \"current_prediction\": {\n    \"predicted_completion_date\": \"2027-01-28\",\n    \"predicted_final_expenditure\": 44.8,\n    \"current_expenditure\": 26.0,\n    \"original_cost\": 40.0,\n    \"last_3_months\": [\n      {\"monthly_expenditure\": 2.5},\n      {\"monthly_expenditure\": 2.5},\n      {\"monthly_expenditure\": 2.0}\n    ]\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/simulate-delay",
+          "host": ["{{baseUrl}}"],
+          "path": ["simulate-delay"]
+        },
+        "description": "Simulates timeline shifts and compounding cost escalations."
+      },
+      "response": []
+    },
+    {
+      "name": "7. List Projects (Paginated)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/projects?limit=10&offset=0",
+          "host": ["{{baseUrl}}"],
+          "path": ["projects"],
+          "query": [
+            {
+              "key": "limit",
+              "value": "10"
+            },
+            {
+              "key": "offset",
+              "value": "0"
+            }
+          ]
+        },
+        "description": "Fetches unique projects from the preprocessed 7-month dataset."
+      },
+      "response": []
+    },
+    {
+      "name": "8. Get Project Details By ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/projects/400005",
+          "host": ["{{baseUrl}}"],
+          "path": ["projects", "400005"]
+        },
+        "description": "Fetches chronological monthly historical records and live prediction for a specific project."
+      },
+      "response": []
+    }
+  ]
+}
